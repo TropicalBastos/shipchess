@@ -44,30 +44,56 @@ interface ShipInstance {
   restX: number;
   restZ: number;
   yaw: number;
-  phase: number; // small per-ship phase offset so idle bobbing de-syncs
 }
 
-let shadowTexture: THREE.CanvasTexture | null = null;
-function getShadowTexture(): THREE.CanvasTexture {
-  if (!shadowTexture) {
-    const c = document.createElement("canvas");
-    c.width = c.height = 64;
-    const ctx = c.getContext("2d")!;
-    const grad = ctx.createRadialGradient(32, 32, 4, 32, 32, 30);
-    grad.addColorStop(0, "rgba(6,20,28,0.4)");
-    grad.addColorStop(1, "rgba(6,20,28,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 64);
-    shadowTexture = new THREE.CanvasTexture(c);
+// Shared shadow resources: one texture+material for the whole fleet, one
+// geometry per class — nothing to dispose or leak across syncs (review W2-02).
+let shadowMaterial: THREE.MeshBasicMaterial | null = null;
+function getShadowMaterial(): THREE.MeshBasicMaterial {
+  if (!shadowMaterial) {
+    let map: THREE.CanvasTexture | null = null;
+    if (typeof document !== "undefined") {
+      const c = document.createElement("canvas");
+      c.width = c.height = 64;
+      const ctx = c.getContext("2d")!;
+      const grad = ctx.createRadialGradient(32, 32, 4, 32, 32, 30);
+      grad.addColorStop(0, "rgba(6,20,28,0.4)");
+      grad.addColorStop(1, "rgba(6,20,28,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+      map = new THREE.CanvasTexture(c);
+    }
+    shadowMaterial = new THREE.MeshBasicMaterial({
+      map,
+      transparent: true,
+      depthWrite: false,
+      opacity: map ? 1 : 0, // headless (tests): no canvas, invisible shadow
+    });
   }
-  return shadowTexture;
+  return shadowMaterial;
+}
+
+const shadowGeometries = new Map<PieceType, THREE.PlaneGeometry>();
+function getShadowGeometry(type: PieceType): THREE.PlaneGeometry {
+  let g = shadowGeometries.get(type);
+  if (!g) {
+    g = new THREE.PlaneGeometry(
+      SHIP_SPECS[type].beam * 2.2,
+      SHIP_SPECS[type].length * 1.6,
+    );
+    shadowGeometries.set(type, g);
+  }
+  return g;
 }
 
 export class Fleet {
   private readonly scene: THREE.Scene;
   private readonly materials: Record<PieceColor, FleetMaterials>;
   private ships: ShipInstance[] = [];
-  private pools: Record<PieceColor, Map<PieceType, THREE.Group[]>> = {
+  private pools: Record<
+    PieceColor,
+    Map<PieceType, Array<{ object: THREE.Group; shadow: THREE.Mesh }>>
+  > = {
     w: new Map(),
     b: new Map(),
   };
@@ -80,11 +106,11 @@ export class Fleet {
   /** Rebuild ship placement from a FEN string (full sync, pool-reusing). */
   syncTo(fen: string): void {
     const placement = parseFenPlacement(fen);
-    // Return all current ships to the pools.
+    // Return all current ships (with their paired shadows) to the pools.
     for (const s of this.ships) {
       this.scene.remove(s.object, s.shadow);
       const pool = this.pools[s.color].get(s.type) ?? [];
-      pool.push(s.object);
+      pool.push({ object: s.object, shadow: s.shadow });
       this.pools[s.color].set(s.type, pool);
     }
     this.ships = placement.map((p) => this.spawn(p));
@@ -92,24 +118,17 @@ export class Fleet {
 
   private spawn(p: PlacedPiece): ShipInstance {
     const pool = this.pools[p.color].get(p.type) ?? [];
-    const object = pool.pop() ?? buildShip(p.type, this.materials[p.color]);
+    let pair = pool.pop();
+    if (!pair) {
+      const shadow = new THREE.Mesh(getShadowGeometry(p.type), getShadowMaterial());
+      shadow.rotation.x = -Math.PI / 2;
+      pair = { object: buildShip(p.type, this.materials[p.color]), shadow };
+    }
     const { x, z } = squareToWorld(p.square);
-    const shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        SHIP_SPECS[p.type].beam * 2.2,
-        SHIP_SPECS[p.type].length * 1.6,
-      ),
-      new THREE.MeshBasicMaterial({
-        map: getShadowTexture(),
-        transparent: true,
-        depthWrite: false,
-      }),
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    this.scene.add(object, shadow);
+    this.scene.add(pair.object, pair.shadow);
     return {
-      object,
-      shadow,
+      object: pair.object,
+      shadow: pair.shadow,
       type: p.type,
       color: p.color,
       square: p.square,
@@ -117,7 +136,6 @@ export class Fleet {
       restZ: z,
       // White fleet faces -Z (toward black's ranks), black faces +Z.
       yaw: p.color === "w" ? 0 : Math.PI,
-      phase: ((x * 7.13 + z * 3.71) % 1) * 0.6,
     };
   }
 
@@ -133,6 +151,7 @@ export class Fleet {
   private static _f = new THREE.Vector3();
   private static _r = new THREE.Vector3();
   private static _up = new THREE.Vector3();
+  private static _axis = new THREE.Vector3();
   private static _q = new THREE.Quaternion();
   private static _yawQ = new THREE.Quaternion();
   private static _Y = new THREE.Vector3(0, 1, 0);
@@ -141,7 +160,9 @@ export class Fleet {
   update(t: number): void {
     for (const s of this.ships) {
       const spec = SHIP_SPECS[s.type];
-      const tt = t + s.phase;
+      // Shared, unshifted time: ships must ride the exact surface the GPU
+      // renders (review W2-01 — natural desync comes from rest positions).
+      const tt = t;
       const halfL = spec.length * 0.38;
       const halfB = spec.beam * 0.5;
       // Sample bow, stern, port, starboard in the ship's heading frame.
@@ -162,10 +183,17 @@ export class Fleet {
       const up = Fleet._up.copy(R).cross(F).normalize();
       if (up.y < 0) up.negate();
 
-      // Per-class tilt clamp: cap the angle between deck normal and world up.
+      // Per-class tilt clamp: exact angular cap (review W2-07 — lerp
+      // overshoots; rotate world-up toward the deck normal by exactly maxTilt).
       const angle = up.angleTo(Fleet._Y);
       if (angle > spec.maxTilt) {
-        up.lerp(Fleet._Y, 1 - spec.maxTilt / angle).normalize();
+        Fleet._axis.copy(Fleet._Y).cross(up);
+        if (Fleet._axis.lengthSq() > 1e-12) {
+          Fleet._axis.normalize();
+          up.copy(Fleet._Y).applyAxisAngle(Fleet._axis, spec.maxTilt);
+        } else {
+          up.copy(Fleet._Y);
+        }
       }
 
       s.object.position.set(cx, cy * spec.bobScale, cz);
