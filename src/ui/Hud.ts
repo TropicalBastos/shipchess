@@ -109,6 +109,45 @@ const MENU_CSS = /* css */ `
   position: fixed; bottom: 14px; left: 0; right: 0; text-align: center;
   font: 12px ${FONT_UI}; letter-spacing: .1em; color: rgba(207,224,232,.55);
 }
+
+/* In-game side panel */
+.scp {
+  position: fixed; top: 10px; right: 10px; width: 208px; z-index: 10;
+  display: none; flex-direction: column; gap: 10px; padding: 12px;
+  background: rgba(8,20,28,.8); border: 1px solid #33566a; border-radius: 14px;
+  color: #dce7ea; font: 13px ${FONT_UI}; backdrop-filter: blur(3px);
+}
+.scp-head {
+  font: 600 10px ${FONT_UI}; letter-spacing: .22em; text-transform: uppercase;
+  color: #9fc4c9; text-align: left;
+}
+.scp-fleet { display: flex; align-items: center; gap: 7px; min-height: 22px; }
+.scp-fleet .scm-dot { flex: none; }
+.scp-fleet-name { font-weight: 600; width: 62px; text-align: left; }
+.scp-chips { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; }
+.scp-chip {
+  width: 16px; height: 16px; border-radius: 4px; font: 700 10px ${FONT_UI};
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.scp-chip-b { background: #3a4148; color: #cfe0e8; border: 1px solid #1d2226; }
+.scp-chip-w { background: #e8e2d4; color: #2c3338; border: 1px solid #8a8578; }
+.scp-adv { font: 700 11px ${FONT_UI}; color: #d9b45c; }
+.scp-log {
+  max-height: 34vh; overflow-y: auto; text-align: left; line-height: 1.7;
+  white-space: pre-line; font: 12px ui-monospace, monospace; color: #cfe0e8;
+  border-top: 1px solid #1f3641; border-bottom: 1px solid #1f3641; padding: 6px 0;
+}
+.scp-log:empty::before { content: "No moves yet"; color: #5f7d87; font-style: italic; }
+.scp-cmds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.scp-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 6px; cursor: pointer; border-radius: 8px;
+  background: rgba(29,57,71,.9); color: #e9ece4; border: 1px solid #3e6878;
+  font: 600 12px ${FONT_UI};
+  transition: background .12s ease, border-color .12s ease;
+}
+.scp-btn:hover { border-color: #d9b45c; background: rgba(29,57,71,1); }
+.scp-btn .ico { color: #d9b45c; font-size: 13px; }
 `;
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -164,52 +203,71 @@ export class Hud {
     );
     container.appendChild(this.thinkingEl);
 
-    // Side panel: moves + tallies + commands.
-    this.sideEl = el(
-      "div",
-      "position:fixed;top:8px;right:8px;width:172px;display:none;flex-direction:column;" +
-        "gap:8px;background:rgba(10,26,36,.55);border-radius:8px;padding:10px;" +
-        "color:#dce7ea;font:12px system-ui;z-index:10",
-    );
-    this.tallyEl = el("div", "min-height:28px;line-height:1.5");
-    this.movesEl = el(
-      "div",
-      "max-height:38vh;overflow-y:auto;line-height:1.6;white-space:pre-line;" +
-        "font:12px ui-monospace,monospace",
-    );
-    const cmds = el("div", "display:flex;flex-wrap:wrap;gap:6px");
-    const mkBtn = (label: string, fn: () => void, confirmLabel?: string) => {
-      const b = el("button", BTN + ";padding:5px 8px;font-size:12px", label);
+    // Side panel: scoreboard + move log + command grid (styled via MENU_CSS —
+    // injected below, before the panel is built).
+    this.styleEl = document.createElement("style");
+    this.styleEl.textContent = MENU_CSS;
+    document.head.appendChild(this.styleEl);
+
+    this.sideEl = el("div", "");
+    this.sideEl.className = "scp";
+    const head = document.createElement("div");
+    head.className = "scp-head";
+    head.textContent = "Captured ships";
+    this.tallyEl = document.createElement("div");
+    this.tallyEl.innerHTML =
+      `<div class="scp-fleet"><span class="scm-dot scm-dot-w"></span>` +
+      `<span class="scp-fleet-name">Ivory</span>` +
+      `<span class="scp-chips" data-tally-w></span><span class="scp-adv" data-adv-w></span></div>` +
+      `<div class="scp-fleet"><span class="scm-dot scm-dot-b"></span>` +
+      `<span class="scp-fleet-name">Charcoal</span>` +
+      `<span class="scp-chips" data-tally-b></span><span class="scp-adv" data-adv-b></span></div>`;
+    this.movesEl = document.createElement("div");
+    this.movesEl.className = "scp-log";
+    const cmds = document.createElement("div");
+    cmds.className = "scp-cmds";
+    const mkBtn = (
+      icon: string,
+      label: string,
+      fn: () => void,
+      confirmLabel?: string,
+    ) => {
+      const b = document.createElement("button");
+      b.className = "scp-btn";
+      const setLabel = (text: string) =>
+        (b.innerHTML = `<span class="ico">${icon}</span>${text}`);
+      setLabel(label);
+      b.title = label;
       let armed = false;
       let timer = 0;
       this.confirmResets.push(() => {
         armed = false;
-        b.textContent = label;
+        setLabel(label);
       });
       b.addEventListener("click", () => {
         // Never window.confirm(): modal dialogs block the page (and any
         // automation). Two-click inline confirm instead.
         if (!confirmLabel || armed) {
           armed = false;
-          b.textContent = label;
+          setLabel(label);
           fn();
           return;
         }
         armed = true;
-        b.textContent = confirmLabel;
+        setLabel(confirmLabel);
         clearTimeout(timer);
         timer = window.setTimeout(() => {
           armed = false;
-          b.textContent = label;
+          setLabel(label);
         }, 3000);
       });
       cmds.appendChild(b);
     };
-    mkBtn("Undo", () => this.onUndo?.());
-    mkBtn("Resign", () => this.onResign?.(), "Strike colors?");
-    mkBtn("Draw", () => this.onOfferDraw?.(), "Both agree?");
-    mkBtn("Menu", () => this.onMenu?.());
-    this.sideEl.append(this.tallyEl, this.movesEl, cmds);
+    mkBtn("↺", "Undo", () => this.onUndo?.());
+    mkBtn("½", "Draw", () => this.onOfferDraw?.(), "Agree?");
+    mkBtn("⚑", "Resign", () => this.onResign?.(), "Sure?");
+    mkBtn("☰", "Menu", () => this.onMenu?.());
+    this.sideEl.append(head, this.tallyEl, this.movesEl, cmds);
     container.appendChild(this.sideEl);
 
     // Promotion picker.
@@ -255,12 +313,7 @@ export class Hud {
     );
     container.appendChild(this.overEl);
 
-    // Main menu — structured DOM + injected stylesheet (hover/selected
-    // states need real CSS, and native <select>s read as archaic).
-    this.styleEl = document.createElement("style");
-    this.styleEl.textContent = MENU_CSS;
-    document.head.appendChild(this.styleEl);
-
+    // Main menu — structured DOM styled by the injected stylesheet.
     this.menuEl = el("div", "");
     this.menuEl.className = "scm-root";
     this.menuEl.innerHTML = `
@@ -387,7 +440,7 @@ export class Hud {
     this.thinkingEl.style.display = active ? "block" : "none";
   }
 
-  /** One sync channel: move list + tallies from authoritative history. */
+  /** One sync channel: move list + scoreboard from authoritative history. */
   setPosition(sync: PositionSync): void {
     const rows: string[] = [];
     for (let i = 0; i < sync.sanHistory.length; i += 2) {
@@ -398,15 +451,26 @@ export class Hud {
     this.movesEl.textContent = rows.join("\n");
     this.movesEl.scrollTop = this.movesEl.scrollHeight;
 
-    const count = (color: Color) =>
+    // Each fleet's row shows the ENEMY ships it has captured, as chips in the
+    // victim fleet's colors, plus a brass material-advantage badge.
+    const VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    const chips = (victimColor: Color) =>
       sync.captured
-        .filter((c) => c.color === color)
+        .filter((c) => c.color === victimColor)
         .map((c) => PIECE_LETTER[c.type] ?? "?")
         .sort()
-        .join(" ");
-    this.tallyEl.innerHTML =
-      `<div>Ivory prizes: <b>${count("b") || "—"}</b></div>` +
-      `<div>Charcoal prizes: <b>${count("w") || "—"}</b></div>`;
+        .map((l) => `<span class="scp-chip scp-chip-${victimColor}">${l}</span>`)
+        .join("");
+    const gain = (victimColor: Color) =>
+      sync.captured
+        .filter((c) => c.color === victimColor)
+        .reduce((sum, c) => sum + (VALUE[c.type] ?? 0), 0);
+    const q = (sel: string) => this.tallyEl.querySelector(sel) as HTMLElement;
+    q("[data-tally-w]").innerHTML = chips("b"); // Ivory captured charcoal ships
+    q("[data-tally-b]").innerHTML = chips("w");
+    const diff = gain("b") - gain("w"); // >0: Ivory leads on material
+    q("[data-adv-w]").textContent = diff > 0 ? `+${diff}` : "";
+    q("[data-adv-b]").textContent = diff < 0 ? `+${-diff}` : "";
   }
 
   showPromotion(active: boolean): void {

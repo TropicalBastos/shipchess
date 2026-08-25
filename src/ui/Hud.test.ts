@@ -80,7 +80,7 @@ describe("Hud promotion wiring (DOM)", () => {
     expect(document.body.textContent).toContain("2. Nf3");
   });
 
-  it("captured tallies render per fleet with piece letters", () => {
+  it("scoreboard renders captured chips per fleet with the advantage badge", () => {
     hud.setPosition({
       fen: "x",
       sanHistory: [],
@@ -92,10 +92,13 @@ describe("Hud promotion wiring (DOM)", () => {
       inMenu: false,
       reason: "reset",
     });
-    const t = document.body.textContent ?? "";
-    expect(t).toContain("Ivory prizes");
-    expect(t).toMatch(/Ivory prizes:\s*P Q/);
-    expect(t).toMatch(/Charcoal prizes:\s*N/);
+    const chipsW = [...document.querySelectorAll("[data-tally-w] .scp-chip")];
+    const chipsB = [...document.querySelectorAll("[data-tally-b] .scp-chip")];
+    expect(chipsW.map((c) => c.textContent)).toEqual(["P", "Q"]);
+    expect(chipsB.map((c) => c.textContent)).toEqual(["N"]);
+    // Ivory captured p+q (10) vs charcoal's n (3): Ivory leads +7.
+    expect(document.querySelector("[data-adv-w]")?.textContent).toBe("+7");
+    expect(document.querySelector("[data-adv-b]")?.textContent).toBe("");
   });
 
   it("turn pill and game-over banner render the right text", () => {
