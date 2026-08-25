@@ -15,8 +15,6 @@ export interface SunPreset {
   cloudColor: string;
   cloudAmount: number;
   starIntensity: number;
-  /** Bioluminescent board-edge glow strength (visibility, scales with dark). */
-  boardGlow: number;
 }
 
 export const SUN_PRESETS: Record<string, SunPreset> = {
@@ -34,7 +32,6 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
     cloudColor: "#ffffff",
     cloudAmount: 0.62,
     starIntensity: 0,
-    boardGlow: 0.25,
   },
   golden: {
     sunDir: [0.85, 0.12, 0.3],
@@ -50,7 +47,6 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
     cloudColor: "#f6c79a",
     cloudAmount: 0.55,
     starIntensity: 0,
-    boardGlow: 0.5,
   },
   moonlit: {
     sunDir: [-0.4, 0.13, 0.35],
@@ -66,7 +62,6 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
     cloudColor: "#54677e",
     cloudAmount: 0.35,
     starIntensity: 1,
-    boardGlow: 1.0,
   },
 };
 
@@ -108,6 +103,5 @@ export function lerpPreset(a: SunPreset, b: SunPreset, t: number): SunPreset {
     cloudColor: mixHex(a.cloudColor, b.cloudColor),
     cloudAmount: mix(a.cloudAmount, b.cloudAmount),
     starIntensity: mix(a.starIntensity, b.starIntensity),
-    boardGlow: mix(a.boardGlow, b.boardGlow),
   };
 }

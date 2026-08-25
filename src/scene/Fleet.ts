@@ -261,12 +261,6 @@ export class Fleet {
 
   private checkedColor: PieceColor | null = null;
 
-  /** Masthead running lights: intensity by time of day (0 = off by day). */
-  setLampIntensity(v: number): void {
-    this.materials.w.lamp.emissiveIntensity = v;
-    this.materials.b.lamp.emissiveIntensity = v;
-  }
-
   /** Check indication: the checked side's flagship signal light flashes red. */
   setCheck(color: PieceColor | null): void {
     if (this.checkedColor && this.checkedColor !== color) {

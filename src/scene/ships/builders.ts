@@ -121,17 +121,8 @@ const BUILDERS: Record<PieceType, (m: FleetMaterials) => THREE.Group> = {
   k: flagship,
 };
 
-const LAMP_GEOMETRY = new THREE.SphereGeometry(0.014, 6, 5);
-
 export function buildShip(type: PieceType, materials: FleetMaterials): THREE.Group {
   const ship = BUILDERS[type](materials);
   ship.name = `ship-${type}`;
-  // Masthead running light: a tiny lamp at the ship's highest point. Its
-  // shared material's emissiveIntensity is driven by the time-of-day preset
-  // (dark presets light the fleet), so it costs nothing by day.
-  const top = new THREE.Box3().setFromObject(ship).max.y;
-  const lamp = new THREE.Mesh(LAMP_GEOMETRY, materials.lamp);
-  lamp.position.set(0, top + 0.012, 0);
-  ship.add(lamp);
   return ship;
 }

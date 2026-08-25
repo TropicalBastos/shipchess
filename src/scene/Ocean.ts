@@ -47,9 +47,6 @@ uniform vec3 uDarkSquare;
 uniform vec3 uFogColor;
 uniform float uFogNear;
 uniform float uFogFar;
-uniform vec3 uGlowColor;
-uniform float uGlow;
-uniform float uTime;
 varying vec2 vRest;
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -81,7 +78,7 @@ void main() {
   vec2 g = abs(fract(vRest + 0.5) - 0.5);
   float line = 1.0 - smoothstep(0.015, 0.05, min(g.x, g.y));
   squares = mix(squares, squares * 0.55, line);
-  water = mix(water, squares, board * 0.8);
+  water = mix(water, squares, board * 0.65);
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
@@ -97,12 +94,6 @@ void main() {
   // Simple lambert so swells read as form.
   float diff = 0.75 + 0.25 * max(dot(n, uSunDir), 0.0);
   water *= diff;
-
-  // Bioluminescent square edging (visibility feature): the grid channels
-  // glow softly, breathing on a wrap-quantized period so time stays seamless.
-  float breath = 0.85 + 0.15 * sin(uTime * 0.7853981633974483);
-  float edgeGlow = 1.0 - smoothstep(0.0, 0.09, min(g.x, g.y));
-  water += uGlowColor * edgeGlow * edgeGlow * board * uGlow * breath;
 
   // Horizon fog matching SceneManager's scene.fog so the far ocean edge
   // dissolves into the sky instead of silhouetting against it.
@@ -146,13 +137,11 @@ export class Ocean {
       uDeepColor: { value: new THREE.Color("#0a3450") },
       uCrestColor: { value: new THREE.Color("#2b7d95") },
       uSkyColor: { value: new THREE.Color("#e9ece4") },
-      uLightSquare: { value: new THREE.Color("#b9d8d2") },
-      uDarkSquare: { value: new THREE.Color("#2e5f55") },
+      uLightSquare: { value: new THREE.Color("#aac9c0") },
+      uDarkSquare: { value: new THREE.Color("#26505c") },
       uFogColor: { value: new THREE.Color("#e5e9df") },
       uFogNear: { value: 70 },
       uFogFar: { value: 340 },
-      uGlowColor: { value: new THREE.Color("#2ee6c8") },
-      uGlow: { value: 0.25 },
     };
 
     const mat = new THREE.ShaderMaterial({
@@ -168,11 +157,6 @@ export class Ocean {
   /** t must be WaveField.wrapTime(elapsed) — the shared float32 time value. */
   setTime(t: number): void {
     this.uniforms.uTime.value = t;
-  }
-
-  /** Bioluminescent board-edge glow strength (per time-of-day preset). */
-  setBoardGlow(strength: number): void {
-    this.uniforms.uGlow.value = strength;
   }
 
   /** Sun-preset support (Phase 7). */
