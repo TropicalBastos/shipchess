@@ -19,20 +19,36 @@ describe("Highlights lifecycle", () => {
     expect(quadCount(scene)).toBe(0);
   });
 
-  it("denial flash fades and expires after ~0.6s", () => {
+  it("denial flash fades (opacity decreases), expires, and restarts bright", () => {
     const scene = new THREE.Scene();
     const h = new Highlights(scene);
+    const opacity = () =>
+      ((scene.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
+        .opacity;
     h.flashDenial("g7");
-    h.update(0, 0);
-    expect(quadCount(scene)).toBe(1);
+    h.update(0, 0.016);
+    const early = opacity();
     h.update(0.3, 0.3);
     expect(quadCount(scene)).toBe(1); // mid-fade, still visible
+    expect(opacity()).toBeLessThan(early); // actually fading (R2-04)
     h.update(0.7, 0.4);
     expect(quadCount(scene)).toBe(0); // expired and cleared
-    // A fresh flash restarts at full opacity.
+    // A fresh flash restarts near full opacity.
     h.flashDenial("g7");
     h.update(0, 0.016);
     expect(quadCount(scene)).toBe(1);
+    expect(opacity()).toBeGreaterThan(0.5);
+  });
+
+  it("replacement selection actually moves the quads (R2-05)", () => {
+    const scene = new THREE.Scene();
+    const h = new Highlights(scene);
+    h.setSelection("a1", []);
+    h.update(1, 0.016);
+    const x1 = scene.children[0].position.x;
+    h.setSelection("h1", []);
+    h.update(1, 0.016);
+    expect(scene.children[0].position.x).not.toBeCloseTo(x1, 3);
   });
 
   it("quads ride the water surface (positions update with time)", () => {

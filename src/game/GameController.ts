@@ -134,13 +134,15 @@ export class GameController {
       // the next sync repaints the fleet. (Phase 4 may refine this policy.)
       console.error("animator.play failed; continuing with committed move", err);
     }
-    this.view.onCheck(move.checkedColor ?? null);
-    if (move.end) {
-      this.state = "gameOver";
-      this.view.onGameOver(move.end);
-      return;
+    // Transition FIRST, notify after: a throwing view callback must never
+    // strand the controller in `animating` (round-2 review R2-02).
+    this.state = move.end ? "gameOver" : "awaitingInput";
+    try {
+      this.view.onCheck(move.checkedColor ?? null);
+      if (move.end) this.view.onGameOver(move.end);
+      else this.view.onTurn(this.game.turn());
+    } catch (err) {
+      console.error("view callback failed after committed move", err);
     }
-    this.state = "awaitingInput";
-    this.view.onTurn(this.game.turn());
   }
 }

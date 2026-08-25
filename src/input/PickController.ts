@@ -15,7 +15,7 @@ export class PickController {
   private readonly plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   private readonly hit = new THREE.Vector3();
   private readonly ndc = new THREE.Vector2();
-  private down: { x: number; y: number } | null = null;
+  private down: { x: number; y: number; pointerId: number } | null = null;
   private maxMoved = 0;
 
   private readonly canvas: HTMLCanvasElement;
@@ -32,11 +32,17 @@ export class PickController {
     this.onSquareClick = onSquareClick;
     canvas.style.touchAction = "none";
     canvas.addEventListener("pointerdown", (e) => {
-      this.down = { x: e.clientX, y: e.clientY };
+      // Single-pointer ownership: a second touch cancels the gesture instead
+      // of hijacking it (round-2 review R2-01).
+      if (this.down) {
+        this.down = null;
+        return;
+      }
+      this.down = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
       this.maxMoved = 0;
     });
     canvas.addEventListener("pointermove", (e) => {
-      if (!this.down) return;
+      if (!this.down || e.pointerId !== this.down.pointerId) return;
       // Track PEAK displacement: an orbit drag that returns to its origin
       // must never read as a click (Phase 3 review W3-02).
       this.maxMoved = Math.max(
@@ -44,8 +50,11 @@ export class PickController {
         Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y),
       );
     });
+    canvas.addEventListener("pointercancel", () => {
+      this.down = null;
+    });
     canvas.addEventListener("pointerup", (e) => {
-      if (!this.down) return;
+      if (!this.down || e.pointerId !== this.down.pointerId) return;
       const moved = Math.max(
         this.maxMoved,
         Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y),

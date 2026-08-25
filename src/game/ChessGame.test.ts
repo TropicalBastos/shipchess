@@ -226,12 +226,14 @@ describe("GameController state machine", () => {
       ["b8", "c6"],
       ["d1", "h5"],
       ["g8", "f6"],
-      ["h5", "f7"],
     ]) {
       await gc.clickSquare(f);
       await gc.clickSquare(t);
     }
-    expect(log.slice(-3)).toEqual(["anim", "check", "over"]);
+    log.length = 0; // isolate the mating move (R2-06)
+    await gc.clickSquare("h5");
+    await gc.clickSquare("f7");
+    expect(log).toEqual(["sel", "sel", "anim", "check", "over"]);
   });
 
   it("cancelled promotion is fully clean: prompt closed, deselected, stale choice ignored", async () => {
