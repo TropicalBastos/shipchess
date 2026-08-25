@@ -12,6 +12,8 @@ export interface FleetMaterials {
   dark: THREE.MeshStandardMaterial;
   /** Flagship signal light — emissive, flashed red on check (Phase 3). */
   signal: THREE.MeshStandardMaterial;
+  /** True for the ivory (white) fleet — used to pick per-color GLB models. */
+  ivory: boolean;
 }
 
 export function makeFleetMaterials(ivory: boolean): FleetMaterials {
@@ -25,6 +27,7 @@ export function makeFleetMaterials(ivory: boolean): FleetMaterials {
     });
   return ivory
     ? {
+        ivory,
         hull: m("#e8e2d4"),
         deck: m("#c9bfa8"),
         accent: m("#a8863f", { roughness: 0.5, metalness: 0.4 }),
@@ -32,6 +35,7 @@ export function makeFleetMaterials(ivory: boolean): FleetMaterials {
         signal: m("#f5efdd", { emissive: "#f2e9c8", emissiveIntensity: 0.6 }),
       }
     : {
+        ivory,
         hull: m("#3a4148"),
         deck: m("#2c3338"),
         accent: m("#2f8f8a", { roughness: 0.5, metalness: 0.3 }),

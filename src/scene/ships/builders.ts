@@ -6,6 +6,7 @@
  */
 import * as THREE from "three";
 import type { FleetMaterials } from "./parts";
+import { getShipModel } from "./models";
 import { block, cylinder, hull, mast, turret } from "./parts";
 
 export type PieceType = "p" | "n" | "b" | "r" | "q" | "k";
@@ -122,7 +123,10 @@ const BUILDERS: Record<PieceType, (m: FleetMaterials) => THREE.Group> = {
 };
 
 export function buildShip(type: PieceType, materials: FleetMaterials): THREE.Group {
-  const ship = BUILDERS[type](materials);
+  // Textured GLB models (preloaded in main) take precedence; the procedural
+  // builders remain the fallback so tests and failed loads still sail.
+  const model = getShipModel(type, materials.ivory);
+  const ship = model ?? BUILDERS[type](materials);
   ship.name = `ship-${type}`;
   return ship;
 }

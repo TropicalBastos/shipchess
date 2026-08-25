@@ -12,6 +12,7 @@ import {
 import { PickController } from "./input/PickController";
 import type { PieceType } from "./scene/ships/builders";
 import { loadSettings, saveSettings } from "./ui/settings";
+import { preloadShipModels } from "./scene/ships/models";
 import { AudioManager } from "./audio/AudioManager";
 import { SUN_PRESETS, lerpPreset, oceanPaletteArgs } from "./scene/presets";
 import { ShipAnimator } from "./scene/ShipAnimator";
@@ -32,6 +33,9 @@ const bootSettings = loadSettings();
 const ocean = new Ocean(sm.sunDir, bootSettings.quality === "low" ? 0.5 : 1);
 sm.scene.add(ocean.mesh);
 
+// Textured ship models load before the fleet builds (procedural fallback
+// on failure — the board must never come up empty).
+await preloadShipModels().catch(() => {});
 const fleet = new Fleet(sm.scene);
 fleet.syncTo(START_FEN);
 
