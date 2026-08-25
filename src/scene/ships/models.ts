@@ -38,6 +38,8 @@ export async function preloadShipModels(): Promise<void> {
   const wanted: [string, string, number][] = [
     ["p:w", `${base}models/pawn_white.glb`, 0.45],
     ["p:b", `${base}models/pawn_black.glb`, 0.45],
+    ["n:w", `${base}models/knight_white.glb`, 0.5],
+    ["n:b", `${base}models/knight_black.glb`, 0.5],
     ["r:w", `${base}models/rook_white.glb`, 0.85],
     ["r:b", `${base}models/rook_black.glb`, 0.85],
   ];
