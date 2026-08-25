@@ -11,6 +11,10 @@ export interface SunPreset {
   deep: string;
   crest: string;
   skyTint: string;
+  /** Procedural sky: cloud tint, cloud coverage [0..1], star strength [0..1]. */
+  cloudColor: string;
+  cloudAmount: number;
+  starIntensity: number;
 }
 
 export const SUN_PRESETS: Record<string, SunPreset> = {
@@ -25,6 +29,9 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
     deep: "#0a3450",
     crest: "#2b7d95",
     skyTint: "#e9ece4",
+    cloudColor: "#ffffff",
+    cloudAmount: 0.5,
+    starIntensity: 0,
   },
   golden: {
     sunDir: [0.85, 0.12, 0.3],
@@ -37,9 +44,12 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
     deep: "#123246",
     crest: "#a06b3f",
     skyTint: "#f4cf9a",
+    cloudColor: "#f6c79a",
+    cloudAmount: 0.55,
+    starIntensity: 0,
   },
   moonlit: {
-    sunDir: [-0.4, 0.5, 0.35],
+    sunDir: [-0.4, 0.13, 0.35],
     sunColor: "#cfe0f5",
     sunIntensity: 1.1,
     ambient: "#3d4f63",
@@ -49,6 +59,9 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
     deep: "#04121f",
     crest: "#16405a",
     skyTint: "#9db6cf",
+    cloudColor: "#54677e",
+    cloudAmount: 0.35,
+    starIntensity: 1,
   },
 };
 
@@ -87,5 +100,8 @@ export function lerpPreset(a: SunPreset, b: SunPreset, t: number): SunPreset {
     deep: mixHex(a.deep, b.deep),
     crest: mixHex(a.crest, b.crest),
     skyTint: mixHex(a.skyTint, b.skyTint),
+    cloudColor: mixHex(a.cloudColor, b.cloudColor),
+    cloudAmount: mix(a.cloudAmount, b.cloudAmount),
+    starIntensity: mix(a.starIntensity, b.starIntensity),
   };
 }

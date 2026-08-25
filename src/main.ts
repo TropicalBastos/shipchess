@@ -329,6 +329,7 @@ function frame(now: number): void {
   elapsedRef.value += dt;
   const t = wrapTime(elapsedRef.value);
   ocean.setTime(t);
+  sm.setSkyTime(t);
   animator.tick(dt * (settings.fastAnimations ? 4 : 1));
   fleet.update(t);
   highlights.update(t, dt);
