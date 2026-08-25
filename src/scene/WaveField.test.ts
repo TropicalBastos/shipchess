@@ -28,7 +28,9 @@ function reference(x0: number, z0: number, t: number) {
     const dirX = w.dirX / len,
       dirZ = w.dirZ / len;
     const k = (2 * Math.PI) / w.wavelength;
-    const omega = Math.sqrt(GRAVITY * k);
+    // Spec: omega is quantized to a multiple of 2π/TIME_WRAP (seamless wrap).
+    const quantum = (2 * Math.PI) / TIME_WRAP;
+    const omega = Math.round(Math.sqrt(GRAVITY * k) / quantum) * quantum;
     const q = STEEPNESS / (k * w.amplitude * RAW_WAVES.length);
     const A = w.amplitude * a;
     const phase = k * (dirX * x0 + dirZ * z0) - omega * t;
@@ -95,12 +97,36 @@ describe("WaveField ↔ analytic parity", () => {
     }
   });
 
-  it("generates GLSL carrying every derived constant", () => {
+  it("is seamless across the time wrap (omega quantized to the wrap period)", () => {
+    // The wrapped and unwrapped clocks must produce the same surface: any
+    // difference is pure wrap discontinuity, isolated from real wave motion.
+    for (const [x, z] of [
+      [6, 3],
+      [45, 45],
+      [-20, 12],
+    ]) {
+      for (const t of [TIME_WRAP + 0.25, 3 * TIME_WRAP + 17.3]) {
+        const wrapped = displace(x, z, wrapTime(t));
+        const unwrapped = displace(x, z, Math.fround(t));
+        expect(Math.abs(wrapped.y - unwrapped.y)).toBeLessThan(1e-3);
+        expect(
+          Math.hypot(wrapped.x - unwrapped.x, wrapped.z - unwrapped.z),
+        ).toBeLessThan(1e-3);
+      }
+    }
+    expect(wrapTime(TIME_WRAP)).toBe(0);
+    expect(wrapTime(TIME_WRAP + 0.1)).toBeCloseTo(Math.fround(0.1), 7);
+  });
+
+  it("generates GLSL carrying every derived constant of every wave", () => {
     const glsl = wavesGlsl();
     expect(glsl).toContain("calmFactor");
     expect(glsl).toContain("waveDisplace");
     for (const w of WAVES) {
-      expect(glsl).toContain(String(w.amplitude));
+      for (const v of [w.dirX, w.dirZ, w.amplitude, w.k, w.omega, w.q]) {
+        const s = String(v);
+        expect(glsl).toContain(s.includes(".") ? s : s + ".0");
+      }
     }
   });
 });

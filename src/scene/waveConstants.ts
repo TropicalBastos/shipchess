@@ -48,17 +48,24 @@ export interface Wave {
 
 const fr = Math.fround;
 
-/** Derived, float32-rounded so CPU math matches the GLSL literals bit-closely. */
+/**
+ * Derived, float32-rounded so CPU math matches the GLSL literals bit-closely.
+ * omega is quantized to an integer multiple of 2π/TIME_WRAP so the whole field
+ * is EXACTLY periodic over the wrap — the wrap boundary is seamless by
+ * construction (shift from true dispersion ≤ ~0.6%, imperceptible).
+ */
 export const WAVES: Wave[] = RAW_WAVES.map((w) => {
   const len = Math.hypot(w.dirX, w.dirZ);
   const k = (2 * Math.PI) / w.wavelength;
   const q = STEEPNESS / (k * w.amplitude * RAW_WAVES.length);
+  const omegaQuantum = (2 * Math.PI) / TIME_WRAP;
+  const omega = Math.round(Math.sqrt(GRAVITY * k) / omegaQuantum) * omegaQuantum;
   return {
     dirX: fr(w.dirX / len),
     dirZ: fr(w.dirZ / len),
     amplitude: fr(w.amplitude),
     k: fr(k),
-    omega: fr(Math.sqrt(GRAVITY * k)),
+    omega: fr(omega),
     q: fr(q),
   };
 });

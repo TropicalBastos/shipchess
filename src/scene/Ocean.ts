@@ -43,6 +43,9 @@ uniform vec3 uCrestColor;
 uniform vec3 uSkyColor;
 uniform vec3 uLightSquare;
 uniform vec3 uDarkSquare;
+uniform vec3 uFogColor;
+uniform float uFogNear;
+uniform float uFogFar;
 varying vec2 vRest;
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -88,7 +91,14 @@ void main() {
 
   // Simple lambert so swells read as form.
   float diff = 0.75 + 0.25 * max(dot(n, uSunDir), 0.0);
-  gl_FragColor = vec4(water * diff, 1.0);
+  water *= diff;
+
+  // Horizon fog matching SceneManager's scene.fog so the far ocean edge
+  // dissolves into the sky instead of silhouetting against it.
+  float fogF = smoothstep(uFogNear, uFogFar, length(vWorldPos - cameraPosition));
+  water = mix(water, uFogColor, fogF);
+
+  gl_FragColor = vec4(water, 1.0);
 }
 `;
 
@@ -113,6 +123,9 @@ export class Ocean {
       uSkyColor: { value: new THREE.Color("#e9ece4") },
       uLightSquare: { value: new THREE.Color("#aac9c0") },
       uDarkSquare: { value: new THREE.Color("#26505c") },
+      uFogColor: { value: new THREE.Color("#e5e9df") },
+      uFogNear: { value: 55 },
+      uFogFar: { value: 160 },
     };
 
     const mat = new THREE.ShaderMaterial({
