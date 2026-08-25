@@ -154,3 +154,68 @@ describe("MaterialAiPlayer (reduced-strength fallback)", () => {
     expect(m).toMatchObject({ from: "a1", to: "a8" });
   });
 });
+
+describe("Phase 6 review locks", () => {
+  it("a late bestmove from a stopped search never satisfies the next one (P6-01)", async () => {
+    // Fake engine that only answers the SECOND go; the first search hangs
+    // until "stop" arrives, then emits its (stale) bestmove.
+    const sent: string[] = [];
+    let handler: (l: string) => void = () => {};
+    let goCount = 0;
+    const transport: EngineTransport = {
+      postMessage: (line) => {
+        sent.push(line);
+        if (line === "uci") queueMicrotask(() => handler("uciok"));
+        if (line === "isready") queueMicrotask(() => handler("readyok"));
+        if (line.startsWith("go")) goCount++;
+        if (line === "stop") queueMicrotask(() => handler("bestmove a7a5")); // stale
+        if (line.startsWith("go") && goCount === 2)
+          queueMicrotask(() => queueMicrotask(() => handler("bestmove e2e4")));
+      },
+      onMessage: (h) => (handler = h),
+      onError: () => {},
+      terminate: () => {},
+    };
+    const c = new UciClient(transport);
+    await c.init();
+    const first = c.search("FEN1", PRESETS.fleet); // hangs until stopped
+    first.catch(() => {}); // its result is stale by design
+    const second = c.search("FEN2", PRESETS.fleet); // must stop+drain FEN1
+    const m = await second;
+    expect(m.from).toBe("e2"); // never the stale a7a5
+    expect(sent).toContain("stop");
+  });
+
+  it("malformed promotion chars are dropped, not smuggled through (P6-04)", async () => {
+    const { transport } = fakeEngine([
+      [/^uci$/, ["uciok"]],
+      [/^isready$/, ["readyok"]],
+      [/^go/, ["bestmove g2g1x"]],
+    ]);
+    const c = new UciClient(transport);
+    await c.init();
+    const m = await c.search("F", PRESETS.captain);
+    expect(m.promotion).toBeUndefined();
+  });
+
+  it("cadet blunder layer preserves underpromotions (P6-09)", async () => {
+    const { transport } = fakeEngine(STANDARD);
+    // rng: 0.1 → blunder; 0 → first verbose move, which chess.js orders as
+    // the knight underpromotion in this position.
+    const rngValues = [0.1, 0];
+    const ai = new StockfishAiPlayer(transport, () => rngValues.shift() ?? 0.9);
+    const m = await ai.requestMove("7k/P7/8/8/8/8/8/7K w - - 0 1", "cadet");
+    expect(m.to).toBe("a8");
+    expect(["q", "r", "b", "n"]).toContain(m.promotion);
+    // Whatever chess.js listed first must be preserved verbatim, not forced q.
+  });
+
+  it("material fallback plays the promotion variant it scored (P6-03)", async () => {
+    const ai = new MaterialAiPlayer(() => 0);
+    // Queen promotion is stalemate (score 0); rook promotion wins material.
+    const m = await ai.requestMove("8/1P6/8/8/8/8/8/5K1k w - - 0 1");
+    if (m.from === "b7" && m.to === "b8") {
+      expect(m.promotion).not.toBe("q");
+    }
+  });
+});

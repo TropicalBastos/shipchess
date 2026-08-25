@@ -59,7 +59,7 @@ async function sinkFlagshipFlourish(loser: "w" | "b"): Promise<void> {
 
 // ---- The admiral: lazy Stockfish behind a facade; MaterialAiPlayer fallback
 // (visibly reduced-strength) if the engine cannot load.
-const ENGINE_URL = "/engine/stockfish-18-lite-single.js";
+const ENGINE_URL = import.meta.env.BASE_URL + "engine/stockfish-18-lite-single.js";
 let engine: StockfishAiPlayer | null = null;
 let fallback: MaterialAiPlayer | null = null;
 const aiFacade: AiPlayer = {
@@ -109,7 +109,7 @@ const controller: GameController = new GameController(
         if (controller.currentState() !== "gameOver" || myEnd !== endSeq) return;
         hud.showGameOver(
           end,
-          () => controller.startGame(lastConfig),
+          () => startWithConfig(lastConfig),
           () => controller.toMenu(),
         );
       })();
@@ -132,10 +132,13 @@ const controller: GameController = new GameController(
 
 let lastConfig: GameConfig = { aiColor: null };
 let endSeq = 0;
-hud.onStartGame = (config) => {
+function startWithConfig(config: GameConfig): void {
   lastConfig = config;
-  if (config.aiColor && config.difficulty) {
-    if (!fallback) {
+  if (config.aiColor && !fallback) {
+    // Sync Worker construction can throw (e.g. CSP) — degrade, never abort
+    // the game start (P6-02). Rematches route through here too, so every
+    // AI game gets its ucinewgame (P6-08).
+    try {
       engine ??= new StockfishAiPlayer(workerTransport(ENGINE_URL));
       hud.toast("The admiral is boarding…", 1500);
       engine
@@ -145,10 +148,15 @@ hud.onStartGame = (config) => {
           hud.toast("Engine unavailable — playing at reduced strength");
           fallback = new MaterialAiPlayer();
         });
+    } catch (err) {
+      console.error("Worker construction failed", err);
+      hud.toast("Engine unavailable — playing at reduced strength");
+      fallback = new MaterialAiPlayer();
     }
   }
   controller.startGame(config);
-};
+}
+hud.onStartGame = startWithConfig;
 hud.onUndo = () => controller.undo();
 hud.onResign = () => controller.resign();
 hud.onOfferDraw = () => controller.agreeDraw();

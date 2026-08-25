@@ -59,25 +59,33 @@ export class StockfishAiPlayer implements AiPlayer {
     this.client.dispose();
   }
 
-  async requestMove(fen: string): Promise<{
+  async requestMove(
+    fen: string,
+    difficulty?: Difficulty,
+  ): Promise<{
     from: string;
     to: string;
     promotion?: PromotionPiece;
   }> {
+    // Per-request difficulty (P6-06): the request snapshot wins; the mutable
+    // field is only a default for direct users.
+    const rank = difficulty ?? this.difficulty;
     await this.ensureReady();
     const started = Date.now();
     let move: EngineMove;
-    if (this.difficulty === "cadet" && this.rng() < CADET_BLUNDER_P) {
+    if (rank === "cadet" && this.rng() < CADET_BLUNDER_P) {
       const chess = new Chess(fen);
       const moves = chess.moves({ verbose: true });
       const m = moves[Math.floor(this.rng() * moves.length)];
       move = {
         from: m.from,
         to: m.to,
-        promotion: m.promotion ? "q" : undefined,
+        // Keep the ACTUAL promotion piece — the random pick may be an
+        // underpromotion (P6-09).
+        promotion: (m.promotion as EngineMove["promotion"]) ?? undefined,
       };
     } else {
-      move = await this.client.search(fen, PRESETS[this.difficulty]);
+      move = await this.client.search(fen, PRESETS[rank]);
     }
     const elapsed = Date.now() - started;
     if (elapsed < MIN_DELAY_MS) {
@@ -151,7 +159,9 @@ export class MaterialAiPlayer implements AiPlayer {
     return {
       from: best.from,
       to: best.to,
-      promotion: best.promotion ? "q" : undefined,
+      // The variant we SCORED is the variant we play (P6-03 — a forced queen
+      // here once turned a winning rook-promotion into stalemate).
+      promotion: (best.promotion as PromotionPiece) ?? undefined,
     };
   }
 }

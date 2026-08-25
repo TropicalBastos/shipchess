@@ -103,8 +103,31 @@ export class UciClient {
     await this.ready();
   }
 
-  /** Run one search. The caller owns staleness (compare its own requestId). */
+  private pendingSearch: Promise<unknown> | null = null;
+
+  /**
+   * Run one search. Searches are SERIALIZED: starting a new one stops and
+   * drains any in-flight search first, so a stale bestmove can never satisfy
+   * a newer request (review P6-01 — the classic UCI pitfall).
+   */
   async search(fen: string, preset: SearchPreset): Promise<EngineMove> {
+    if (this.pendingSearch) {
+      this.transport.postMessage("stop");
+      await this.pendingSearch.then(
+        () => {},
+        () => {},
+      );
+    }
+    const run = this.runSearch(fen, preset);
+    this.pendingSearch = run;
+    try {
+      return await run;
+    } finally {
+      if (this.pendingSearch === run) this.pendingSearch = null;
+    }
+  }
+
+  private async runSearch(fen: string, preset: SearchPreset): Promise<EngineMove> {
     this.transport.postMessage(`setoption name Skill Level value ${preset.skill}`);
     this.transport.postMessage(`position fen ${fen}`);
     const done = this.waitFor(
@@ -120,11 +143,12 @@ export class UciClient {
     const line = await done;
     const uci = line.split(/\s+/)[1];
     if (!uci || uci === "(none)") throw new Error(`engine returned no move: ${line}`);
-    return {
-      from: uci.slice(0, 2),
-      to: uci.slice(2, 4),
-      promotion: (uci[4] as EngineMove["promotion"]) || undefined,
-    };
+    // Whitelist the promotion char — junk must not smuggle past the
+    // controller's promotion guard into a throwing applyMove (P6-04).
+    const ch = uci[4];
+    const promo =
+      ch && "qrbn".includes(ch) ? (ch as EngineMove["promotion"]) : undefined;
+    return { from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: promo };
   }
 
   /** Interrupt an in-flight search; the pending bestmove resolves/drains. */
