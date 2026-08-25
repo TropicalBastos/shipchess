@@ -129,6 +129,11 @@ export class ChessGame {
     return applied;
   }
 
+  /** The side currently in check (the side to move), if any. */
+  checkedNow(): Color | null {
+    return this.chess.inCheck() ? this.chess.turn() : null;
+  }
+
   /** Undo n half-moves. Returns the resulting FEN (no-op safe). */
   undoPlies(n: number): string {
     for (let i = 0; i < n; i++) {

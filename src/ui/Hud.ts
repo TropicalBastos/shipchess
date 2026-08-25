@@ -58,6 +58,7 @@ export class Hud {
   private readonly tallyEl: HTMLDivElement;
   private readonly thinkingEl: HTMLDivElement;
   private escHandler!: (e: KeyboardEvent) => void;
+  private readonly confirmResets: Array<() => void> = [];
 
   onPromotionPick: ((p: PromotionPiece) => void) | null = null;
   onPromotionCancel: (() => void) | null = null;
@@ -98,13 +99,18 @@ export class Hud {
     this.tallyEl = el("div", "min-height:28px;line-height:1.5");
     this.movesEl = el(
       "div",
-      "max-height:38vh;overflow-y:auto;line-height:1.6;font:12px ui-monospace,monospace",
+      "max-height:38vh;overflow-y:auto;line-height:1.6;white-space:pre-line;" +
+        "font:12px ui-monospace,monospace",
     );
     const cmds = el("div", "display:flex;flex-wrap:wrap;gap:6px");
     const mkBtn = (label: string, fn: () => void, confirmLabel?: string) => {
       const b = el("button", BTN + ";padding:5px 8px;font-size:12px", label);
       let armed = false;
       let timer = 0;
+      this.confirmResets.push(() => {
+        armed = false;
+        b.textContent = label;
+      });
       b.addEventListener("click", () => {
         // Never window.confirm(): modal dialogs block the page (and any
         // automation). Two-click inline confirm instead.
@@ -210,6 +216,7 @@ export class Hud {
     oneStart.addEventListener("click", () =>
       this.onStartGame?.({
         aiColor: fleetSel.value === "w" ? "b" : "w",
+        difficulty: diffSel.value as GameConfig["difficulty"],
       }),
     );
     oneRow.append(oneLabel, fleetSel, diffSel, oneStart);
@@ -245,6 +252,8 @@ export class Hud {
   }
 
   showMenu(active: boolean): void {
+    // Armed confirms never leak across games/menus (review P5-10).
+    for (const reset of this.confirmResets) reset();
     this.menuEl.style.display = active ? "flex" : "none";
     this.sideEl.style.display = active ? "none" : "flex";
     this.turnEl.style.display = active ? "none" : "block";

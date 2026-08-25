@@ -39,9 +39,14 @@ export interface AiPlayer {
   }>;
 }
 
+export type Difficulty = "cadet" | "captain" | "admiral" | "fleet";
+
 export interface GameConfig {
   /** null = hotseat; otherwise the color the AI commands. */
   aiColor: Color | null;
+  /** Carried through to the AI seam; the Phase 6 engine maps it to presets.
+   * The Phase 5 stub ignores it. */
+  difficulty?: Difficulty;
 }
 
 export interface GameView {
@@ -97,6 +102,12 @@ export class GameController {
     return this.state;
   }
 
+  /** Invalidate any pending AI reply and hide the thinking cue (P5-05). */
+  private cancelAi(): void {
+    this.aiGeneration++;
+    this.view.onAiThinking(false);
+  }
+
   private syncPosition(reason: "move" | "reset" = "reset"): void {
     this.view.onPosition({
       fen: this.game.fen(),
@@ -112,7 +123,7 @@ export class GameController {
    * contract). fresh=false keeps the current position (custom FENs, tests). */
   startGame(config: GameConfig, fresh = true): void {
     if (this.state === "animating") return;
-    this.aiGeneration++;
+    this.cancelAi();
     this.config = config;
     if (fresh) this.game.reset();
     this.pending = null;
@@ -127,7 +138,7 @@ export class GameController {
   /** Back to the menu (idle ocean). */
   toMenu(): void {
     if (this.state === "animating") return;
-    this.aiGeneration++;
+    this.cancelAi();
     this.state = "menu";
     this.deselect();
     this.view.onCheck(null);
@@ -167,13 +178,16 @@ export class GameController {
     const plies =
       this.state === "aiThinking" ? 1 : this.config.aiColor ? 2 : 1;
     if (this.game.historyLength() < plies) return;
-    this.aiGeneration++; // any in-flight AI reply is now stale
+    this.cancelAi(); // any in-flight AI reply is now stale
     this.game.undoPlies(plies);
     this.deselect();
     this.state = "awaitingInput";
-    this.view.onCheck(null);
+    // Restore the TRUE check state of the rewound position (P5-07).
+    this.view.onCheck(this.game.checkedNow());
     this.syncPosition();
     this.view.onTurn(this.game.turn());
+    // Rewinding past a terminal human move can leave the AI to move (P5-01).
+    if (this.config.aiColor === this.game.turn()) void this.aiMove();
   }
 
   /** The human side strikes their colors (also legal while the AI thinks —
@@ -196,7 +210,7 @@ export class GameController {
   }
 
   private endGame(end: EndState): void {
-    this.aiGeneration++;
+    this.cancelAi();
     this.deselect();
     this.state = "gameOver";
     this.view.onGameOver(end);
@@ -242,14 +256,17 @@ export class GameController {
     this.deselect();
     this.state = "animating";
     const move = this.game.applyMove(from, to, promotion);
+    let played = true;
     try {
       await this.animator.play(move);
     } catch (err) {
+      played = false;
       console.error("animator.play failed; continuing with committed move", err);
     }
     this.state = move.end ? "gameOver" : "awaitingInput";
     try {
-      this.syncPosition("move");
+      // A failed animation never reconciled the fleet — force a rebuild (P5-04).
+      this.syncPosition(played ? "move" : "reset");
       this.view.onCheck(move.checkedColor ?? null);
       if (move.end) this.view.onGameOver(move.end);
       else this.view.onTurn(this.game.turn());
@@ -275,15 +292,22 @@ export class GameController {
       if (generation !== this.aiGeneration || this.state !== "aiThinking") {
         return;
       }
+      if (!this.game.legalDestinations(reply.from).includes(reply.to)) {
+        throw new Error(`illegal AI move ${reply.from}->${reply.to}`);
+      }
       this.state = "awaitingInput";
       await this.commit(reply.from, reply.to, reply.promotion);
     } catch (err) {
       console.error("AI move failed", err);
+      // Never hand the AI fleet to the human and never deadlock: the
+      // admiral strikes colors (P5-03).
       if (generation === this.aiGeneration && this.state === "aiThinking") {
+        const human = this.config.aiColor === "w" ? "b" : "w";
         this.state = "awaitingInput";
+        this.endGame({ kind: "resignation", winner: human });
       }
     } finally {
-      this.view.onAiThinking(false);
+      if (generation === this.aiGeneration) this.view.onAiThinking(false);
     }
   }
 }

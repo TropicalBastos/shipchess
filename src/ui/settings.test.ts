@@ -19,6 +19,16 @@ describe("guarded settings store", () => {
     expect(loadSettings().cameraGlide).toBe(true);
   });
 
+  it("rejects valid-version blobs with wrong field types (P5-08)", () => {
+    localStorage.setItem(
+      "shipchess.settings",
+      JSON.stringify({ version: 1, fastAnimations: "false", volume: 9 }),
+    );
+    const s = loadSettings();
+    expect(s.fastAnimations).toBe(false); // string coerces to default
+    expect(s.volume).toBe(0.8); // out-of-range rejected
+  });
+
   it("survives storage that throws (blocked contexts) — never breaks boot", () => {
     const spy = vi
       .spyOn(Storage.prototype, "getItem")

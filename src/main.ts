@@ -69,6 +69,9 @@ const controller: GameController = new GameController(
         const loser =
           end.winner === undefined ? null : end.winner === "w" ? "b" : "w";
         if (loser) await sinkFlagshipFlourish(loser);
+        // The user may have hit Menu/Undo during the flourish — never
+        // resurrect a stale result over the new state (review P5-02).
+        if (controller.currentState() !== "gameOver") return;
         hud.showGameOver(
           end,
           () => controller.startGame(lastConfig),
@@ -83,8 +86,9 @@ const controller: GameController = new GameController(
         sync.captured as Array<{ type: PieceType; color: "w" | "b" }>,
       );
       // After a move the animator already reconciled (re-sync would cancel
-      // the promotion rise); undo/new-game/rematch rebuild from FEN.
-      if (!sync.inMenu && sync.reason === "reset") fleet.syncTo(sync.fen);
+      // the promotion rise); every reset — including returning to the menu —
+      // rebuilds the fleet, un-sinking any flourished flagship (P5-06).
+      if (sync.reason === "reset") fleet.syncTo(sync.fen);
     },
     onAiThinking: (active) => hud.setThinking(active),
   },

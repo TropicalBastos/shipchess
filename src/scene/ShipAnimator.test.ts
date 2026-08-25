@@ -199,5 +199,8 @@ describe("ShipAnimator", () => {
     fleet.update(0);
     expect(fleet.shipAt("d6")).toEqual({ type: "p", color: "w" });
     expect(fleet.shipAt("d5")).toBeNull();
+    // History-derived tally includes the en passant victim (P4-08/P5 lock).
+    const captured = game.capturedPieces();
+    expect(captured).toContainEqual({ type: "p", color: "b" });
   });
 });

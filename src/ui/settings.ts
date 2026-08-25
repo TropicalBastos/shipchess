@@ -26,7 +26,25 @@ export function loadSettings(): Settings {
     if (!raw) return { ...DEFAULTS };
     const parsed = JSON.parse(raw) as Partial<Settings>;
     if (parsed.version !== 1) return { ...DEFAULTS };
-    return { ...DEFAULTS, ...parsed, version: 1 };
+    // Per-field type/range validation — a valid version does not make the
+    // fields trustworthy (review P5-08).
+    return {
+      version: 1,
+      fastAnimations:
+        typeof parsed.fastAnimations === "boolean"
+          ? parsed.fastAnimations
+          : DEFAULTS.fastAnimations,
+      cameraGlide:
+        typeof parsed.cameraGlide === "boolean"
+          ? parsed.cameraGlide
+          : DEFAULTS.cameraGlide,
+      volume:
+        typeof parsed.volume === "number" &&
+        parsed.volume >= 0 &&
+        parsed.volume <= 1
+          ? parsed.volume
+          : DEFAULTS.volume,
+    };
   } catch {
     return { ...DEFAULTS };
   }
