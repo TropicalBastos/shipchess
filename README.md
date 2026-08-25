@@ -29,6 +29,17 @@ Admiral.
 | Queen | Aircraft carrier |
 | King | Flagship |
 
+## The Admiral (AI opponent)
+
+Four ranks, backed by a real Stockfish 18 engine running in a Web Worker:
+
+| Rank | Character |
+| --- | --- |
+| Cadet | Skill 0, depth 1, deliberately blunders — beatable by beginners |
+| Captain | Skill 6, quick replies — a club-night opponent |
+| Admiral | Skill 13, thinks for a second — will punish mistakes |
+| Fleet Admiral | Full strength, 2s per move — good luck |
+
 ## Develop
 
 ```bash
@@ -45,6 +56,10 @@ with ships anchored in parameter space so they ride exactly the rendered
 surface; chess rules come entirely from chess.js; the AI speaks UCI to a
 vendored single-threaded Stockfish worker (no special headers needed); all
 audio is synthesized with Web Audio at runtime.
+
+Built with TypeScript, Three.js, Vite, chess.js, and Stockfish — no art or
+audio assets: every ship, wave, texture, and sound is generated procedurally
+at runtime.
 
 ## Licenses
 
