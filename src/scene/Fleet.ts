@@ -44,6 +44,24 @@ interface ShipInstance {
   restX: number;
   restZ: number;
   yaw: number;
+  /** Animation state (Phase 4): downward offset & extra roll about forward. */
+  sink: number;
+  list: number;
+}
+
+/** Mutable animation handle over one ship. Invalidated by the next syncTo. */
+export interface ShipHandle {
+  readonly type: PieceType;
+  readonly color: PieceColor;
+  readonly restX: number;
+  readonly restZ: number;
+  readonly yaw: number;
+  setRest(x: number, z: number): void;
+  setYaw(yaw: number): void;
+  setSink(depth: number): void;
+  setList(rad: number): void;
+  /** Current world position (post-buoyancy, from the last update). */
+  worldPosition(): THREE.Vector3;
 }
 
 // Shared shadow resources: one texture+material for the whole fleet, one
@@ -136,8 +154,92 @@ export class Fleet {
       restZ: z,
       // White fleet faces -Z (toward black's ranks), black faces +Z.
       yaw: p.color === "w" ? 0 : Math.PI,
+      sink: 0,
+      list: 0,
     };
   }
+
+  /** Animation handle for the ship on `square` (null if empty). */
+  handleAt(square: string): ShipHandle | null {
+    const s = this.ships.find((i) => i.square === square);
+    if (!s) return null;
+    return {
+      get type() {
+        return s.type;
+      },
+      get color() {
+        return s.color;
+      },
+      get restX() {
+        return s.restX;
+      },
+      get restZ() {
+        return s.restZ;
+      },
+      get yaw() {
+        return s.yaw;
+      },
+      setRest: (x, z) => {
+        s.restX = x;
+        s.restZ = z;
+      },
+      setYaw: (yaw) => {
+        s.yaw = yaw;
+      },
+      setSink: (depth) => {
+        s.sink = depth;
+      },
+      setList: (rad) => {
+        s.list = rad;
+      },
+      worldPosition: () => s.object.position.clone(),
+    };
+  }
+
+  /**
+   * Captured-ship tally: sunk ships resurface in a line along the captor's
+   * board edge (east edge for ships Ivory captured, west for Charcoal's
+   * prizes), riding the open water. Rebuilt from the full captured list.
+   */
+  setCaptured(captured: Array<{ type: PieceType; color: PieceColor }>): void {
+    for (const s of this.tally) {
+      this.scene.remove(s.object, s.shadow);
+      const pool = this.pools[s.color].get(s.type) ?? [];
+      pool.push({ object: s.object, shadow: s.shadow });
+      this.pools[s.color].set(s.type, pool);
+    }
+    this.tally = [];
+    const counts: Record<PieceColor, number> = { w: 0, b: 0 };
+    for (const c of captured) {
+      // A captured black ship was taken by white → white's (east) edge.
+      const east = c.color === "b";
+      const i = counts[c.color]++;
+      const x = (east ? 1 : -1) * (BOARD_HALF + 1.6);
+      const z = -3 + i * 0.85;
+      const pool = this.pools[c.color].get(c.type) ?? [];
+      let pair = pool.pop();
+      if (!pair) {
+        const shadow = new THREE.Mesh(getShadowGeometry(c.type), getShadowMaterial());
+        shadow.rotation.x = -Math.PI / 2;
+        pair = { object: buildShip(c.type, this.materials[c.color]), shadow };
+      }
+      this.scene.add(pair.object, pair.shadow);
+      this.tally.push({
+        object: pair.object,
+        shadow: pair.shadow,
+        type: c.type,
+        color: c.color,
+        square: "",
+        restX: x,
+        restZ: z,
+        yaw: east ? Math.PI / 2 : -Math.PI / 2,
+        sink: 0,
+        list: 0,
+      });
+    }
+  }
+
+  private tally: ShipInstance[] = [];
 
   shipAt(square: string): { type: PieceType; color: PieceColor } | null {
     const s = this.ships.find((i) => i.square === square);
@@ -164,6 +266,8 @@ export class Fleet {
   private static _r = new THREE.Vector3();
   private static _up = new THREE.Vector3();
   private static _axis = new THREE.Vector3();
+  private static _listQ = new THREE.Quaternion();
+  private static _Z = new THREE.Vector3(0, 0, 1);
   private static _q = new THREE.Quaternion();
   private static _yawQ = new THREE.Quaternion();
   private static _Y = new THREE.Vector3(0, 1, 0);
@@ -175,7 +279,13 @@ export class Fleet {
       m.emissive.set("#ff2214");
       m.emissiveIntensity = 1.2 + Math.sin(t * 9) * 1.0;
     }
-    for (const s of this.ships) {
+    this.updateGroup(this.ships, t);
+    this.updateGroup(this.tally, t);
+  }
+
+  // Split to avoid a per-frame combined-array allocation (review P4-07).
+  private updateGroup(group: ShipInstance[], t: number): void {
+    for (const s of group) {
       const spec = SHIP_SPECS[s.type];
       // Shared, unshifted time: ships must ride the exact surface the GPU
       // renders (review W2-01 — natural desync comes from rest positions).
@@ -213,11 +323,16 @@ export class Fleet {
         }
       }
 
-      s.object.position.set(cx, cy * spec.bobScale, cz);
+      s.object.position.set(cx, cy * spec.bobScale - s.sink, cz);
       Fleet._q.setFromUnitVectors(Fleet._Y, up);
       Fleet._yawQ.setFromAxisAngle(Fleet._Y, s.yaw);
       s.object.quaternion.copy(Fleet._q).multiply(Fleet._yawQ);
+      if (s.list !== 0) {
+        Fleet._listQ.setFromAxisAngle(Fleet._Z, s.list);
+        s.object.quaternion.multiply(Fleet._listQ);
+      }
 
+      s.shadow.visible = s.sink < 0.05;
       s.shadow.position.set(cx, cy * spec.bobScale + 0.005, cz);
       s.shadow.rotation.z = -s.yaw;
     }

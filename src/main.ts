@@ -1,7 +1,10 @@
 import * as THREE from "three";
+import { Animator } from "./animation/Animator";
 import { ChessGame } from "./game/ChessGame";
 import { GameController } from "./game/GameController";
 import { PickController } from "./input/PickController";
+import { ShipAnimator } from "./scene/ShipAnimator";
+import { Effects } from "./scene/effects/sprites";
 import { Fleet } from "./scene/Fleet";
 import { Highlights } from "./scene/Highlights";
 import { Ocean } from "./scene/Ocean";
@@ -20,22 +23,44 @@ sm.scene.add(ocean.mesh);
 const fleet = new Fleet(sm.scene);
 fleet.syncTo(START_FEN);
 
-// ---- Game wiring (Phase 3: teleport animator; Phase 4 swaps the implementation)
+// ---- Game wiring (Phase 4: real ship animation)
 const highlights = new Highlights(sm.scene);
 const hud = new Hud(app);
 const game = new ChessGame();
+const animator = new Animator();
+// Hidden tabs get no animation frames: switch to instant (teleport) moves and
+// flush anything in flight, so a mid-move tab switch never dangles the game.
+document.addEventListener("visibilitychange", () => {
+  animator.instantMode = document.hidden;
+  if (document.hidden) animator.fastForward();
+});
+animator.instantMode = document.hidden;
+const effects = new Effects(sm.scene, animator);
+const shipAnimator = new ShipAnimator(fleet, animator, effects, () =>
+  wrapTime(elapsedRef.value),
+);
 const controller = new GameController(
   game,
-  { play: async (move) => fleet.syncTo(move.fenAfter) },
+  shipAnimator,
   {
     onSelection: (sq, legal) => highlights.setSelection(sq, legal),
     onDenied: (sq) => highlights.flashDenial(sq),
     onCheck: (color) => fleet.setCheck(color),
-    onTurn: (color) => hud.setTurn(color),
+    onTurn: (color) => {
+      hud.setTurn(color);
+      sm.glideToSide(color);
+    },
     onPromotionPrompt: (active) => hud.showPromotion(active),
     onGameOver: (end) => hud.showGameOver(end),
   },
 );
+// Debug handle (harmless in production; invaluable under automation).
+(window as unknown as Record<string, unknown>).__shipchess = {
+  state: () => controller.currentState(),
+  fen: () => game.fen(),
+  turn: () => game.turn(),
+};
+
 hud.onPromotionPick = (p) => void controller.choosePromotion(p);
 hud.onPromotionCancel = () => controller.cancelPromotion();
 new PickController(sm.renderer.domElement, sm.camera, (square) =>
@@ -124,14 +149,15 @@ for (let i = 0; i < 8; i++) {
 }
 
 // Render loop — dt clamped so a backgrounded tab resumes without a burst.
-let elapsed = 0;
+const elapsedRef = { value: 0 };
 let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min((now - last) / 1000, 1 / 30);
   last = now;
-  elapsed += dt;
-  const t = wrapTime(elapsed);
+  elapsedRef.value += dt;
+  const t = wrapTime(elapsedRef.value);
   ocean.setTime(t);
+  animator.tick(dt);
   fleet.update(t);
   highlights.update(t, dt);
 
