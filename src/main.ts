@@ -1,60 +1,128 @@
-import './style.css'
-import heroImg from './assets/hero.png'
-import typescriptLogo from './assets/typescript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.ts'
+import * as THREE from "three";
+import { Ocean } from "./scene/Ocean";
+import { SceneManager } from "./scene/SceneManager";
+import { displace, wrapTime } from "./scene/WaveField";
+import { BOARD_HALF, SQUARE_SIZE } from "./scene/waveConstants";
+import "./style.css";
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${typescriptLogo}" class="framework" alt="TypeScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.ts</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+const app = document.getElementById("app")!;
+const sm = new SceneManager(app);
+const ocean = new Ocean(sm.sunDir);
+sm.scene.add(ocean.mesh);
 
-<div class="ticks"></div>
+/** Anything that floats: anchored at a REST position, advected by the map. */
+interface Floater {
+  object: THREE.Object3D;
+  restX: number;
+  restZ: number;
+  yOffset: number;
+  tilt: boolean;
+}
+const floaters: Floater[] = [];
+const _n = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+const _q = new THREE.Quaternion();
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://www.typescriptlang.org" target="_blank">
-          <img class="button-icon" src="${typescriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+function addFloater(
+  object: THREE.Object3D,
+  restX: number,
+  restZ: number,
+  yOffset = 0,
+  tilt = true,
+): void {
+  sm.scene.add(object);
+  floaters.push({ object, restX, restZ, yOffset, tilt });
+}
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+// Debug cube — THE Phase 1 visual parity check. In live water, off-board.
+addFloater(
+  new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.5, 0.5),
+    new THREE.MeshStandardMaterial({ color: "#e07b39" }),
+  ),
+  6,
+  3,
+  0.1,
+);
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+// Corner buoys marking the play area (just outside the calm falloff start).
+function buoy(): THREE.Object3D {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.16, 0.3, 10),
+    new THREE.MeshStandardMaterial({ color: "#c8452c" }),
+  );
+  const cap = new THREE.Mesh(
+    new THREE.ConeGeometry(0.09, 0.22, 10),
+    new THREE.MeshStandardMaterial({ color: "#f2e4c9" }),
+  );
+  cap.position.y = 0.26;
+  g.add(body, cap);
+  return g;
+}
+for (const sx of [-1, 1])
+  for (const sz of [-1, 1])
+    addFloater(buoy(), sx * (BOARD_HALF + 0.35), sz * (BOARD_HALF + 0.35), 0.1);
+
+// Rank/file labels as canvas sprites along two board edges (a–h, 1–8).
+function labelSprite(text: string): THREE.Sprite {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const ctx = c.getContext("2d")!;
+  ctx.font = "bold 40px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(242,240,230,0.92)";
+  ctx.fillText(text, 32, 34);
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c),
+      depthWrite: false,
+    }),
+  );
+  sprite.scale.setScalar(0.42);
+  return sprite;
+}
+for (let i = 0; i < 8; i++) {
+  const center = (i - 3.5) * SQUARE_SIZE;
+  // files a–h along the near edge, ranks 1–8 along the left edge
+  addFloater(
+    labelSprite("abcdefgh"[i]),
+    center,
+    BOARD_HALF + 0.55,
+    0.25,
+    false,
+  );
+  addFloater(
+    labelSprite(String(i + 1)),
+    -(BOARD_HALF + 0.55),
+    -center,
+    0.25,
+    false,
+  );
+}
+
+// Render loop — dt clamped so a backgrounded tab resumes without a burst.
+let elapsed = 0;
+let last = performance.now();
+function frame(now: number): void {
+  const dt = Math.min((now - last) / 1000, 1 / 30);
+  last = now;
+  elapsed += dt;
+  const t = wrapTime(elapsed);
+  ocean.setTime(t);
+
+  for (const f of floaters) {
+    const s = displace(f.restX, f.restZ, t);
+    f.object.position.set(s.x, s.y + f.yOffset, s.z);
+    if (f.tilt) {
+      _n.set(s.nx, s.ny, s.nz);
+      _q.setFromUnitVectors(_up, _n);
+      f.object.quaternion.slerp(_q, 0.15);
+    }
+  }
+
+  sm.render(dt);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
