@@ -55,6 +55,9 @@ export class SceneManager {
     this.controls.maxDistance = 28;
     this.controls.enablePan = false;
     this.controls.enableDamping = true;
+    this.renderer.domElement.addEventListener("pointerdown", () => {
+      this.glideT = 1; // user takes the camera: cancel any glide (P4-03)
+    });
 
     // Sky dome + matching horizon fog.
     const horizon = new THREE.Color("#e5e9df");
@@ -100,7 +103,12 @@ export class SceneManager {
   glideToSide(color: "w" | "b"): void {
     this.glideFrom = Math.atan2(this.camera.position.x, this.camera.position.z);
     this.glideTo = color === "w" ? 0 : Math.PI;
-    this.glideT = 0;
+    let d = (this.glideTo - this.glideFrom) % (2 * Math.PI);
+    if (d > Math.PI) d -= 2 * Math.PI;
+    if (d < -Math.PI) d += 2 * Math.PI;
+    // Near-zero glides are no-ops; and the USER always outranks the glide —
+    // a pointerdown mid-glide cancels it (review P4-03).
+    this.glideT = Math.abs(d) < 0.02 ? 1 : 0;
   }
 
   private updateGlide(dt: number): void {

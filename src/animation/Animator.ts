@@ -51,7 +51,9 @@ export class Animator {
   tick(dt: number): void {
     if (this.tweens.length === 0) return;
     const done: Tween[] = [];
-    for (const t of this.tweens) {
+    // Snapshot: a tween's onUpdate may register NEW tweens (wake puffs);
+    // those start on the NEXT tick instead of double-advancing now (P4-05).
+    for (const t of this.tweens.slice()) {
       t.elapsed = Math.min(t.elapsed + dt, t.duration);
       t.onUpdate(t.ease(t.duration === 0 ? 1 : t.elapsed / t.duration));
       if (t.elapsed >= t.duration) done.push(t);

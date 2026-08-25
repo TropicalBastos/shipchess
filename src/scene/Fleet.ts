@@ -279,7 +279,13 @@ export class Fleet {
       m.emissive.set("#ff2214");
       m.emissiveIntensity = 1.2 + Math.sin(t * 9) * 1.0;
     }
-    for (const s of [...this.ships, ...this.tally]) {
+    this.updateGroup(this.ships, t);
+    this.updateGroup(this.tally, t);
+  }
+
+  // Split to avoid a per-frame combined-array allocation (review P4-07).
+  private updateGroup(group: ShipInstance[], t: number): void {
+    for (const s of group) {
       const spec = SHIP_SPECS[s.type];
       // Shared, unshifted time: ships must ride the exact surface the GPU
       // renders (review W2-01 — natural desync comes from rest positions).

@@ -17,6 +17,7 @@ import type { AppliedMove } from "../game/ChessGame";
 import type { MoveAnimator } from "../game/GameController";
 import type { Fleet, ShipHandle } from "./Fleet";
 import { squareToWorld } from "./Fleet";
+import { displace } from "./WaveField";
 import type { Effects } from "./effects/sprites";
 
 const SAIL_TIME = 0.85;
@@ -69,10 +70,11 @@ export class ShipAnimator implements MoveAnimator {
     }
 
     // The mover's leg — submarine dives, everything else sails.
+    const depart = move.capturedSquare ? 0.35 : 0;
     const leg =
       move.piece === "n"
         ? this.dive(mover, move.to)
-        : this.sail(mover, move.to, move.capturedSquare ? 0.35 : 0);
+        : this.sail(mover, move.to, depart);
     jobs.push(leg);
 
     // Castling: the rook's leg runs simultaneously.
@@ -81,11 +83,12 @@ export class ShipAnimator implements MoveAnimator {
       if (rook) jobs.push(this.sail(rook, move.rookTo, 0));
     }
 
-    // Promotion: the pawn slips under as it arrives.
+    // Promotion: the pawn slips under AS IT ARRIVES — the submerge beat is
+    // anchored to the sail leg's own clock, capture delay included (P4-01).
     if (move.promotedTo) {
       jobs.push(
         (async () => {
-          await this.animator.delay(SAIL_TIME * 0.7);
+          await this.animator.delay(depart + TURN_TIME + SAIL_TIME * 0.7);
           await this.animator.tween(0.35, (v) =>
             mover.setSink(v * DIVE_DEPTH),
           );
@@ -185,8 +188,10 @@ export class ShipAnimator implements MoveAnimator {
     attacker: ShipHandle,
     victim: ShipHandle,
   ): Promise<void> {
-    const p = attacker.worldPosition();
-    void this.effects.flash(p.x, p.y + 0.12, p.z);
+    // Flash position from the wave map at the rest anchor — never the last
+    // rendered transform, which may be stale right after a sync (P4-06).
+    const surf = displace(attacker.restX, attacker.restZ, this.now());
+    void this.effects.flash(surf.x, surf.y + 0.14, surf.z);
     await this.animator.delay(0.15);
     void this.effects.splash(victim.restX, victim.restZ, this.now(), 1.2);
     const roll = (victim.color === "w" ? 1 : -1) * 0.5;

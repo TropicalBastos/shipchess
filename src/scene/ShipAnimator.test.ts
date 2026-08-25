@@ -27,7 +27,9 @@ async function pump(p: Promise<void>, animator: Animator): Promise<number> {
   while (!done) {
     animator.tick(TICK);
     elapsed += TICK;
-    await new Promise((r) => setTimeout(r, 0));
+    // Microtask yield lets awaited continuations register their next tween
+    // (deterministic — no wall-clock timers; review P4-14).
+    for (let i = 0; i < 5; i++) await Promise.resolve();
     if (elapsed > 10) throw new Error("animation never finished");
   }
   return elapsed;
@@ -124,6 +126,58 @@ describe("ShipAnimator", () => {
     fleet.update(0);
     expect(fleet.shipAt("b8")).toEqual({ type: "q", color: "w" });
     expect(seconds).toBeLessThanOrEqual(2.5);
+  });
+
+  it("instantMode: a full move completes with ZERO ticks (hidden-tab contract)", async () => {
+    const { fleet, game, animator, sa } = setup();
+    animator.instantMode = true;
+    const move = game.applyMove("e2", "e4");
+    await sa.play(move); // must resolve without any animator.tick()
+    fleet.update(0);
+    expect(fleet.shipAt("e4")).toEqual({ type: "p", color: "w" });
+    expect(animator.active).toBe(false);
+  });
+
+  it("promotion-with-capture (worst-case composition) stays under 2.5s", async () => {
+    const { fleet, game, animator, sa } = setup("rn2k3/1P6/8/8/8/8/8/4K3 w q - 0 1");
+    const move = game.applyMove("b7", "a8", "q");
+    const seconds = await pump(sa.play(move), animator);
+    expect(seconds).toBeLessThanOrEqual(2.5);
+    fleet.update(0);
+    expect(fleet.shipAt("a8")).toEqual({ type: "q", color: "w" });
+  });
+
+  it("wake puffs are actually emitted during a sail (sprites appear)", async () => {
+    const { scene, game, animator, sa } = setup();
+    const move = game.applyMove("d2", "d4");
+    const p = sa.play(move);
+    let sawSprite = false;
+    for (let i = 0; i < 20; i++) {
+      animator.tick(TICK);
+      for (let j = 0; j < 5; j++) await Promise.resolve();
+      if (scene.children.some((c) => (c as THREE.Sprite).isSprite)) sawSprite = true;
+    }
+    expect(sawSprite).toBe(true);
+    await pump(p, animator);
+  });
+
+  it("mutual captures build tallies on BOTH edges", async () => {
+    const { scene, fleet, game, animator, sa } = setup(
+      "4k3/8/1n6/3p1p2/4P3/8/8/4K3 w - - 0 1",
+    );
+    await pump(sa.play(game.applyMove("e4", "d5")), animator); // exd5
+    await pump(sa.play(game.applyMove("b6", "d5")), animator); // Nxd5 back
+    fleet.update(1);
+    const east = scene.children.filter(
+      (c) => c.name.startsWith("ship-") && c.position.x > 5,
+    );
+    const west = scene.children.filter(
+      (c) => c.name.startsWith("ship-") && c.position.x < -5,
+    );
+    expect(east).toHaveLength(1); // black pawn white captured
+    expect(west).toHaveLength(1); // white pawn black recaptured
+    expect(east[0].name).toBe("ship-p");
+    expect(west[0].name).toBe("ship-p");
   });
 
   it("en passant sinks the pawn on the passed square, not the destination", async () => {
