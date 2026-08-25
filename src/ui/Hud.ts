@@ -293,7 +293,14 @@ export class Hud {
       this.showPause(false);
       this.onMenu?.();
     });
-    pauseCard.append(resume, quit);
+    const todWrap = document.createElement("div");
+    todWrap.innerHTML =
+      '<div class="scp-head" style="margin-bottom:6px">Time of day</div>' +
+      '<div class="scm-seg" data-group="sun-pause">' +
+      '<button class="scm-seg-btn" data-v="day">Day</button>' +
+      '<button class="scm-seg-btn" data-v="golden">Golden</button>' +
+      '<button class="scm-seg-btn" data-v="moonlit">Moonlit</button></div>';
+    pauseCard.append(resume, todWrap, quit);
     this.pauseEl.appendChild(pauseCard);
     this.infoEl.append(head, this.tallyEl, this.movesEl);
     container.appendChild(this.infoEl);
@@ -392,10 +399,13 @@ export class Hud {
           <span>Volume</span>
           <input type="range" min="0" max="1" step="0.05" data-volume style="accent-color:#d9b45c;width:90px" />
         </label>
-        <div class="scm-seg scm-light" data-group="sun">
-          <button class="scm-seg-btn sel" data-v="day">Day</button>
-          <button class="scm-seg-btn" data-v="golden">Golden</button>
-          <button class="scm-seg-btn" data-v="moonlit">Moonlit</button>
+        <div class="scm-tod">
+          <div class="scm-label" style="text-align:center">Time of day</div>
+          <div class="scm-seg scm-light" data-group="sun">
+            <button class="scm-seg-btn" data-v="day">Day</button>
+            <button class="scm-seg-btn" data-v="golden">Golden hour</button>
+            <button class="scm-seg-btn" data-v="moonlit">Moonlit</button>
+          </div>
         </div>
       </div>
       <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move</div>
@@ -478,17 +488,31 @@ export class Hud {
       settings.volume = Number(vol.value);
       this.onSettingsChange?.(settings);
     });
-    const sunSeg = this.menuEl.querySelector<HTMLElement>('[data-group="sun"]')!;
-    for (const b of sunSeg.querySelectorAll<HTMLElement>(".scm-seg-btn")) {
-      b.classList.toggle("sel", b.dataset.v === settings.sunPreset);
+    const sunSegs = [
+      this.menuEl.querySelector<HTMLElement>('[data-group="sun"]')!,
+      this.pauseEl.querySelector<HTMLElement>('[data-group="sun-pause"]')!,
+    ];
+    const syncSunSegs = () => {
+      for (const seg of sunSegs) {
+        for (const b of seg.querySelectorAll<HTMLElement>(".scm-seg-btn")) {
+          b.classList.toggle("sel", b.dataset.v === settings.sunPreset);
+        }
+      }
+    };
+    this.syncTimeOfDay = syncSunSegs;
+    syncSunSegs();
+    for (const seg of sunSegs) {
+      seg.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLElement>(".scm-seg-btn");
+        if (!btn) return;
+        settings.sunPreset = (btn.dataset.v ?? "day") as Settings["sunPreset"];
+        syncSunSegs();
+        this.onSettingsChange?.(settings);
+      });
     }
-    sunSeg.addEventListener("click", (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLElement>(".scm-seg-btn");
-      if (!btn) return;
-      settings.sunPreset = (btn.dataset.v ?? "day") as Settings["sunPreset"];
-      this.onSettingsChange?.(settings);
-    });
   }
+
+  private syncTimeOfDay: () => void = () => {};
 
   dispose(): void {
     window.removeEventListener("keydown", this.escHandler);
@@ -531,6 +555,7 @@ export class Hud {
 
   showPause(active: boolean): void {
     for (const reset of this.confirmResets) reset();
+    if (active) this.syncTimeOfDay();
     this.pauseEl.style.display = active ? "flex" : "none";
   }
 

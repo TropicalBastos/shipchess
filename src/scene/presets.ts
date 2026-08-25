@@ -61,3 +61,31 @@ export function oceanPaletteArgs(
 ): [string, string, string, string] {
   return [p.deep, p.crest, p.skyTint, p.horizon];
 }
+
+/** Interpolate two presets (smooth time-of-day transitions). */
+export function lerpPreset(a: SunPreset, b: SunPreset, t: number): SunPreset {
+  const mix = (x: number, y: number) => x + (y - x) * t;
+  const mixHex = (x: string, y: string) => {
+    const px = parseInt(x.slice(1), 16);
+    const py = parseInt(y.slice(1), 16);
+    const ch = (v: number, s: number) => (v >> s) & 0xff;
+    const m = (s: number) => Math.round(mix(ch(px, s), ch(py, s)));
+    return `#${((m(16) << 16) | (m(8) << 8) | m(0)).toString(16).padStart(6, "0")}`;
+  };
+  return {
+    sunDir: [
+      mix(a.sunDir[0], b.sunDir[0]),
+      mix(a.sunDir[1], b.sunDir[1]),
+      mix(a.sunDir[2], b.sunDir[2]),
+    ],
+    sunColor: mixHex(a.sunColor, b.sunColor),
+    sunIntensity: mix(a.sunIntensity, b.sunIntensity),
+    ambient: mixHex(a.ambient, b.ambient),
+    ambientIntensity: mix(a.ambientIntensity, b.ambientIntensity),
+    zenith: mixHex(a.zenith, b.zenith),
+    horizon: mixHex(a.horizon, b.horizon),
+    deep: mixHex(a.deep, b.deep),
+    crest: mixHex(a.crest, b.crest),
+    skyTint: mixHex(a.skyTint, b.skyTint),
+  };
+}

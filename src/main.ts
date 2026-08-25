@@ -13,7 +13,7 @@ import { PickController } from "./input/PickController";
 import type { PieceType } from "./scene/ships/builders";
 import { loadSettings, saveSettings } from "./ui/settings";
 import { AudioManager } from "./audio/AudioManager";
-import { SUN_PRESETS, oceanPaletteArgs } from "./scene/presets";
+import { SUN_PRESETS, lerpPreset, oceanPaletteArgs } from "./scene/presets";
 import { ShipAnimator } from "./scene/ShipAnimator";
 import { Effects } from "./scene/effects/sprites";
 import { Fleet } from "./scene/Fleet";
@@ -43,13 +43,21 @@ const audio = new AudioManager(settings.volume);
 window.addEventListener("pointerdown", () => audio.unlock());
 window.addEventListener("keydown", () => audio.unlock());
 
-function applySunPreset(name: keyof typeof SUN_PRESETS): void {
-  const p = SUN_PRESETS[name] ?? SUN_PRESETS.day;
+let activePreset = SUN_PRESETS[settings.sunPreset] ?? SUN_PRESETS.day;
+function paintPreset(p: ReturnType<typeof lerpPreset>): void {
   sm.applyPreset(p);
   ocean.setSunDir(sm.sunDir);
   ocean.setPalette(...oceanPaletteArgs(p));
 }
-applySunPreset(settings.sunPreset);
+/** Smoothly cross-fade the whole lighting rig to a new time of day. */
+function applySunPreset(name: keyof typeof SUN_PRESETS): void {
+  const target = SUN_PRESETS[name] ?? SUN_PRESETS.day;
+  if (target === activePreset) return;
+  const from = activePreset;
+  activePreset = target;
+  void animator.tween(1.2, (v) => paintPreset(lerpPreset(from, target, v)));
+}
+paintPreset(activePreset);
 const highlights = new Highlights(sm.scene);
 const hud = new Hud(app, settings);
 const game = new ChessGame();

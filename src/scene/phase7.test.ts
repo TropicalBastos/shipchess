@@ -142,3 +142,19 @@ describe("Phase 7: audio + settings safety", () => {
     expect(s.sunPreset).toBe("day");
   });
 });
+
+describe("Time of day transitions", () => {
+  it("lerpPreset blends every channel and hits both endpoints exactly", async () => {
+    const { lerpPreset } = await import("./presets");
+    const a = SUN_PRESETS.day;
+    const b = SUN_PRESETS.moonlit;
+    expect(lerpPreset(a, b, 0)).toEqual(a);
+    expect(lerpPreset(a, b, 1)).toEqual(b);
+    const mid = lerpPreset(a, b, 0.5);
+    expect(mid.sunIntensity).toBeCloseTo((a.sunIntensity + b.sunIntensity) / 2, 6);
+    expect(mid.deep).toMatch(/^#[0-9a-f]{6}$/);
+    // Midpoint colors differ from both endpoints (a real blend).
+    expect(mid.deep).not.toBe(a.deep);
+    expect(mid.deep).not.toBe(b.deep);
+  });
+});
