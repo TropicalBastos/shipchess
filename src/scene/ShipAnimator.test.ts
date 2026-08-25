@@ -91,7 +91,8 @@ describe("ShipAnimator", () => {
     expect(seconds).toBeLessThanOrEqual(2.5);
     fleet.update(0);
     expect(fleet.shipAt("d5")).toEqual({ type: "p", color: "w" });
-    // Tally: one captured black ship resurfaced at white's (east) edge.
+    // Tally is driven from authoritative history (P4-08 wiring).
+    fleet.setCaptured(game.capturedPieces() as never);
     fleet.update(1);
     const tallyShip = scene.children.find(
       (c) => c.name.startsWith("ship-") && c.position.x > 5,
@@ -167,6 +168,7 @@ describe("ShipAnimator", () => {
     );
     await pump(sa.play(game.applyMove("e4", "d5")), animator); // exd5
     await pump(sa.play(game.applyMove("b6", "d5")), animator); // Nxd5 back
+    fleet.setCaptured(game.capturedPieces() as never);
     fleet.update(1);
     const east = scene.children.filter(
       (c) => c.name.startsWith("ship-") && c.position.x > 5,

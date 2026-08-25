@@ -11,7 +11,7 @@ describe("Hud promotion wiring (DOM)", () => {
   beforeEach(() => {
     hud?.dispose(); // the leak this test file caught (review M3-09)
     document.body.innerHTML = "";
-    hud = new Hud(document.body);
+    hud = new Hud(document.body, { version: 1, fastAnimations: false, cameraGlide: true, volume: 0.8 });
     picks = [];
     cancels = 0;
     hud.onPromotionPick = (p) => picks.push(p);
@@ -54,9 +54,9 @@ describe("Hud promotion wiring (DOM)", () => {
   it("turn pill and game-over banner render the right text", () => {
     hud.setTurn("w");
     expect(document.body.textContent).toContain("Ivory fleet to move");
-    hud.showGameOver({ kind: "stalemate" });
+    hud.showGameOver({ kind: "stalemate" }, () => {}, () => {});
     expect(document.body.textContent).toContain("Stalemate");
-    hud.showGameOver({ kind: "checkmate", winner: "b" });
+    hud.showGameOver({ kind: "checkmate", winner: "b" }, () => {}, () => {});
     expect(document.body.textContent).toContain("Charcoal fleet prevails");
   });
 });

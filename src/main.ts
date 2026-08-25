@@ -2,7 +2,11 @@ import * as THREE from "three";
 import { Animator } from "./animation/Animator";
 import { ChessGame } from "./game/ChessGame";
 import { GameController } from "./game/GameController";
+import type { GameConfig } from "./game/GameController";
+import { StubAiPlayer } from "./game/ai/AiPlayer";
 import { PickController } from "./input/PickController";
+import type { PieceType } from "./scene/ships/builders";
+import { loadSettings, saveSettings } from "./ui/settings";
 import { ShipAnimator } from "./scene/ShipAnimator";
 import { Effects } from "./scene/effects/sprites";
 import { Fleet } from "./scene/Fleet";
@@ -23,9 +27,10 @@ sm.scene.add(ocean.mesh);
 const fleet = new Fleet(sm.scene);
 fleet.syncTo(START_FEN);
 
-// ---- Game wiring (Phase 4: real ship animation)
+// ---- Game wiring (Phase 5: full loop — menu, undo, resign/draw, rematch)
+const settings = loadSettings();
 const highlights = new Highlights(sm.scene);
-const hud = new Hud(app);
+const hud = new Hud(app, settings);
 const game = new ChessGame();
 const animator = new Animator();
 // Hidden tabs get no animation frames: switch to instant (teleport) moves and
@@ -39,7 +44,15 @@ const effects = new Effects(sm.scene, animator);
 const shipAnimator = new ShipAnimator(fleet, animator, effects, () =>
   wrapTime(elapsedRef.value),
 );
-const controller = new GameController(
+
+async function sinkFlagshipFlourish(loser: "w" | "b"): Promise<void> {
+  const handle = fleet.flagshipHandle(loser);
+  if (!handle) return;
+  void effects.splash(handle.restX, handle.restZ, wrapTime(elapsedRef.value), 1.4);
+  await animator.tween(1.1, (v) => handle.setSink(v * 0.9));
+}
+
+const controller: GameController = new GameController(
   game,
   shipAnimator,
   {
@@ -48,17 +61,53 @@ const controller = new GameController(
     onCheck: (color) => fleet.setCheck(color),
     onTurn: (color) => {
       hud.setTurn(color);
-      sm.glideToSide(color);
+      if (settings.cameraGlide) sm.glideToSide(color);
     },
     onPromotionPrompt: (active) => hud.showPromotion(active),
-    onGameOver: (end) => hud.showGameOver(end),
+    onGameOver: (end) => {
+      void (async () => {
+        const loser =
+          end.winner === undefined ? null : end.winner === "w" ? "b" : "w";
+        if (loser) await sinkFlagshipFlourish(loser);
+        hud.showGameOver(
+          end,
+          () => controller.startGame(lastConfig),
+          () => controller.toMenu(),
+        );
+      })();
+    },
+    onPosition: (sync) => {
+      hud.setPosition(sync);
+      hud.showMenu(sync.inMenu);
+      fleet.setCaptured(
+        sync.captured as Array<{ type: PieceType; color: "w" | "b" }>,
+      );
+      // After a move the animator already reconciled (re-sync would cancel
+      // the promotion rise); undo/new-game/rematch rebuild from FEN.
+      if (!sync.inMenu && sync.reason === "reset") fleet.syncTo(sync.fen);
+    },
+    onAiThinking: (active) => hud.setThinking(active),
   },
+  new StubAiPlayer(),
 );
+
+let lastConfig: GameConfig = { aiColor: null };
+hud.onStartGame = (config) => {
+  lastConfig = config;
+  controller.startGame(config);
+};
+hud.onUndo = () => controller.undo();
+hud.onResign = () => controller.resign();
+hud.onOfferDraw = () => controller.agreeDraw();
+hud.onMenu = () => controller.toMenu();
+hud.onSettingsChange = (s) => saveSettings(s);
+
 // Debug handle (harmless in production; invaluable under automation).
 (window as unknown as Record<string, unknown>).__shipchess = {
   state: () => controller.currentState(),
   fen: () => game.fen(),
   turn: () => game.turn(),
+  controller,
 };
 
 hud.onPromotionPick = (p) => void controller.choosePromotion(p);
@@ -157,7 +206,7 @@ function frame(now: number): void {
   elapsedRef.value += dt;
   const t = wrapTime(elapsedRef.value);
   ocean.setTime(t);
-  animator.tick(dt);
+  animator.tick(dt * (settings.fastAnimations ? 4 : 1));
   fleet.update(t);
   highlights.update(t, dt);
 

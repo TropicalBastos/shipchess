@@ -159,10 +159,20 @@ export class Fleet {
     };
   }
 
+  /** Animation handle for `color`'s flagship (end-of-game flourish). */
+  flagshipHandle(color: PieceColor): ShipHandle | null {
+    const s = this.ships.find((i) => i.type === "k" && i.color === color);
+    return s ? this.makeHandle(s) : null;
+  }
+
   /** Animation handle for the ship on `square` (null if empty). */
   handleAt(square: string): ShipHandle | null {
     const s = this.ships.find((i) => i.square === square);
     if (!s) return null;
+    return this.makeHandle(s);
+  }
+
+  private makeHandle(s: ShipInstance): ShipHandle {
     return {
       get type() {
         return s.type;

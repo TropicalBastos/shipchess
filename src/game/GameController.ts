@@ -1,10 +1,12 @@
 /**
- * THE single state authority. All commands — board picks and (later) HUD
- * buttons — route through here and are gated by state. The Animator is a pure
- * consumer: play(move) returns a promise and owns no game state; the game
- * does not advance to the next actor until it resolves. Phase 3's animator
- * implementation is a teleport that resolves immediately; Phase 4 swaps the
- * implementation, not these seams.
+ * THE single state authority. All commands — board picks and HUD buttons —
+ * route through here and are gated by state. The Animator is a pure consumer:
+ * play(move) returns a promise and owns no game state; the game does not
+ * advance to the next actor until it resolves.
+ *
+ * Phase 5: menu / rematch loop, undo (FEN rebuild, never incremental),
+ * resign, draw by agreement, and the AI seam (aiThinking) behind AiPlayer —
+ * Phase 6 swaps the stub for Stockfish without touching these seams.
  */
 import type {
   AppliedMove,
@@ -17,51 +19,124 @@ import type {
 export type { EndState } from "./ChessGame";
 
 export type GameState =
+  | "menu"
   | "awaitingInput"
   | "animating"
   | "awaitingPromotion"
+  | "aiThinking"
   | "gameOver";
-// menu | aiThinking | loading join in Phases 5–6.
 
 export interface MoveAnimator {
   play(move: AppliedMove): Promise<void>;
 }
 
+/** Phase 6 implements this over Stockfish; Phase 5 ships a stub. */
+export interface AiPlayer {
+  requestMove(fen: string): Promise<{
+    from: string;
+    to: string;
+    promotion?: PromotionPiece;
+  }>;
+}
+
+export interface GameConfig {
+  /** null = hotseat; otherwise the color the AI commands. */
+  aiColor: Color | null;
+}
+
 export interface GameView {
-  /** Selection changed: selected square (or null) + its legal destinations. */
   onSelection(square: string | null, legalDestinations: string[]): void;
-  /** An attempted move was illegal — show a denial cue on the square. */
   onDenied(square: string): void;
   onCheck(color: Color | null): void;
   onTurn(color: Color): void;
   onPromotionPrompt(active: boolean): void;
   onGameOver(end: EndState): void;
+  /** Authoritative position/history sync: fires after every move, undo,
+   * new game, and menu return — the ONE channel HUD + tally listen on. */
+  onPosition(sync: PositionSync): void;
+  onAiThinking(active: boolean): void;
+}
+
+export interface PositionSync {
+  fen: string;
+  sanHistory: string[];
+  captured: Array<{ type: string; color: Color }>;
+  inMenu: boolean;
+  /** "move": the animator already reconciled the fleet — do NOT re-sync
+   * (it would cancel the promotion-rise beat). "reset": rebuild the fleet. */
+  reason: "move" | "reset";
 }
 
 export class GameController {
-  private state: GameState = "awaitingInput";
+  private state: GameState = "menu";
   private selected: string | null = null;
   private legal: string[] = [];
   private pending: { from: string; to: string } | null = null;
+  private config: GameConfig = { aiColor: null };
+  private aiGeneration = 0;
 
   private readonly game: ChessGame;
   private readonly animator: MoveAnimator;
   private readonly view: GameView;
+  private readonly ai: AiPlayer | null;
 
-  constructor(game: ChessGame, animator: MoveAnimator, view: GameView) {
+  constructor(
+    game: ChessGame,
+    animator: MoveAnimator,
+    view: GameView,
+    ai: AiPlayer | null = null,
+  ) {
     this.game = game;
     this.animator = animator;
     this.view = view;
-    this.view.onTurn(this.game.turn());
+    this.ai = ai;
+    this.syncPosition();
   }
 
   currentState(): GameState {
     return this.state;
   }
 
-  /** Board click on a square (or off-board: null) — the ONLY input entry. */
+  private syncPosition(reason: "move" | "reset" = "reset"): void {
+    this.view.onPosition({
+      fen: this.game.fen(),
+      sanHistory: this.game.sanHistory(),
+      captured: this.game.capturedPieces(),
+      inMenu: this.state === "menu",
+      reason,
+    });
+  }
+
+  /** Start a game (from menu or gameOver — the rematch path). Allowed while
+   * the AI thinks: the generation bump drops the stale reply (plan Phase 6
+   * contract). fresh=false keeps the current position (custom FENs, tests). */
+  startGame(config: GameConfig, fresh = true): void {
+    if (this.state === "animating") return;
+    this.aiGeneration++;
+    this.config = config;
+    if (fresh) this.game.reset();
+    this.pending = null;
+    this.state = "awaitingInput";
+    this.deselect();
+    this.view.onCheck(null);
+    this.syncPosition();
+    this.view.onTurn(this.game.turn());
+    if (config.aiColor === "w") void this.aiMove();
+  }
+
+  /** Back to the menu (idle ocean). */
+  toMenu(): void {
+    if (this.state === "animating") return;
+    this.aiGeneration++;
+    this.state = "menu";
+    this.deselect();
+    this.view.onCheck(null);
+    this.syncPosition();
+  }
+
+  /** Board click on a square (or off-board: null) — the ONLY board input. */
   async clickSquare(square: string | null): Promise<void> {
-    if (this.state !== "awaitingInput") return; // input rejected mid-flow
+    if (this.state !== "awaitingInput") return;
     if (square === null) {
       this.deselect();
       return;
@@ -78,10 +153,53 @@ export class GameController {
       return;
     }
     if (this.selected) {
-      // Clicked neither a legal destination nor an own piece.
       this.view.onDenied(square);
       this.deselect();
     }
+  }
+
+  /** Undo: one ply in hotseat, two in AI games (per plan). During aiThinking
+   * it takes back just the human ply and cancels the pending reply. Rejected
+   * only while animating; disabled when history is insufficient. */
+  undo(): void {
+    if (this.state === "animating" || this.state === "menu") return;
+    if (this.state === "awaitingPromotion") return;
+    const plies =
+      this.state === "aiThinking" ? 1 : this.config.aiColor ? 2 : 1;
+    if (this.game.historyLength() < plies) return;
+    this.aiGeneration++; // any in-flight AI reply is now stale
+    this.game.undoPlies(plies);
+    this.deselect();
+    this.state = "awaitingInput";
+    this.view.onCheck(null);
+    this.syncPosition();
+    this.view.onTurn(this.game.turn());
+  }
+
+  /** The human side strikes their colors (also legal while the AI thinks —
+   * the generation bump drops the pending reply). */
+  resign(): void {
+    if (this.state !== "awaitingInput" && this.state !== "aiThinking") return;
+    const loser = this.config.aiColor
+      ? this.config.aiColor === "w"
+        ? "b"
+        : "w"
+      : this.game.turn();
+    this.endGame({ kind: "resignation", winner: loser === "w" ? "b" : "w" });
+  }
+
+  /** Draw by agreement (the HUD confirms with the opponent in hotseat;
+   * Phase 6 adds the AI's accept/decline policy before calling this). */
+  agreeDraw(): void {
+    if (this.state !== "awaitingInput") return;
+    this.endGame({ kind: "agreement" });
+  }
+
+  private endGame(end: EndState): void {
+    this.aiGeneration++;
+    this.deselect();
+    this.state = "gameOver";
+    this.view.onGameOver(end);
   }
 
   private deselect(): void {
@@ -100,7 +218,6 @@ export class GameController {
     await this.commit(from, to);
   }
 
-  /** Promotion picker resolution. */
   async choosePromotion(piece: PromotionPiece): Promise<void> {
     if (this.state !== "awaitingPromotion" || !this.pending) return;
     const { from, to } = this.pending;
@@ -109,7 +226,6 @@ export class GameController {
     await this.commit(from, to, piece);
   }
 
-  /** Defined cancel: pending move cleared, ship stays put, back to input. */
   cancelPromotion(): void {
     if (this.state !== "awaitingPromotion") return;
     this.pending = null;
@@ -129,20 +245,45 @@ export class GameController {
     try {
       await this.animator.play(move);
     } catch (err) {
-      // The rules position is authoritative and already advanced; a failed
-      // animation must never strand the game in `animating`. Log and proceed —
-      // the next sync repaints the fleet. (Phase 4 may refine this policy.)
       console.error("animator.play failed; continuing with committed move", err);
     }
-    // Transition FIRST, notify after: a throwing view callback must never
-    // strand the controller in `animating` (round-2 review R2-02).
     this.state = move.end ? "gameOver" : "awaitingInput";
     try {
+      this.syncPosition("move");
       this.view.onCheck(move.checkedColor ?? null);
       if (move.end) this.view.onGameOver(move.end);
       else this.view.onTurn(this.game.turn());
     } catch (err) {
       console.error("view callback failed after committed move", err);
+    }
+    if (
+      this.state === "awaitingInput" &&
+      this.config.aiColor === this.game.turn()
+    ) {
+      await this.aiMove();
+    }
+  }
+
+  private async aiMove(): Promise<void> {
+    if (!this.ai || this.state !== "awaitingInput") return;
+    const generation = this.aiGeneration;
+    this.state = "aiThinking";
+    this.view.onAiThinking(true);
+    try {
+      const reply = await this.ai.requestMove(this.game.fen());
+      // Stale replies (undo / new game / menu since the request) are dropped.
+      if (generation !== this.aiGeneration || this.state !== "aiThinking") {
+        return;
+      }
+      this.state = "awaitingInput";
+      await this.commit(reply.from, reply.to, reply.promotion);
+    } catch (err) {
+      console.error("AI move failed", err);
+      if (generation === this.aiGeneration && this.state === "aiThinking") {
+        this.state = "awaitingInput";
+      }
+    } finally {
+      this.view.onAiThinking(false);
     }
   }
 }
