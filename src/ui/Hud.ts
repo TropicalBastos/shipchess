@@ -125,10 +125,17 @@ const MENU_CSS = /* css */ `
   justify-content: center; background: rgba(4,12,18,.55);
 }
 .scp {
-  width: 250px; display: flex; flex-direction: column; gap: 10px; padding: 16px;
+  width: 250px; display: flex; flex-direction: column; gap: 12px; padding: 18px;
   background: rgba(8,20,28,.92); border: 1px solid #33566a; border-radius: 14px;
   color: #dce7ea; font: 13px ${FONT_UI};
 }
+.scp-info {
+  position: fixed; top: 56px; right: 10px; width: 196px; z-index: 9;
+  display: none; flex-direction: column; gap: 8px; padding: 12px;
+  background: rgba(8,20,28,.72); border: 1px solid #2a4a58; border-radius: 12px;
+  color: #dce7ea; font: 12px ${FONT_UI}; backdrop-filter: blur(3px);
+}
+.scp-info .scp-log { max-height: 26vh; }
 .scp-resume {
   padding: 10px; border: none; border-radius: 9px; cursor: pointer;
   background: #d9b45c; color: #14232b; font: 700 14px ${FONT_UI};
@@ -193,6 +200,7 @@ export class Hud {
   private readonly tallyEl: HTMLDivElement;
   private readonly thinkingEl: HTMLDivElement;
   private pauseEl!: HTMLDivElement;
+  private infoEl!: HTMLDivElement;
   private escHandler!: (e: KeyboardEvent) => void;
   private styleEl!: HTMLStyleElement;
   private readonly confirmResets: Array<() => void> = [];
@@ -245,6 +253,8 @@ export class Hud {
     });
     const pauseCard = document.createElement("div");
     pauseCard.className = "scp";
+    this.infoEl = document.createElement("div");
+    this.infoEl.className = "scp-info";
     const head = document.createElement("div");
     head.className = "scp-head";
     head.textContent = "Captured ships";
@@ -258,57 +268,8 @@ export class Hud {
       `<span class="scp-chips" data-tally-b></span><span class="scp-adv" data-adv-b></span></div>`;
     this.movesEl = document.createElement("div");
     this.movesEl.className = "scp-log";
-    const cmds = document.createElement("div");
-    cmds.className = "scp-cmds";
-    const mkBtn = (
-      icon: string,
-      label: string,
-      fn: () => void,
-      confirmLabel?: string,
-    ) => {
-      const b = document.createElement("button");
-      b.className = "scp-btn";
-      const setLabel = (text: string) =>
-        (b.innerHTML = `<span class="ico">${icon}</span>${text}`);
-      setLabel(label);
-      b.title = label;
-      let armed = false;
-      let timer = 0;
-      this.confirmResets.push(() => {
-        armed = false;
-        setLabel(label);
-      });
-      b.addEventListener("click", () => {
-        // Never window.confirm(): modal dialogs block the page (and any
-        // automation). Two-click inline confirm instead.
-        if (!confirmLabel || armed) {
-          armed = false;
-          setLabel(label);
-          fn();
-          return;
-        }
-        armed = true;
-        setLabel(confirmLabel);
-        clearTimeout(timer);
-        timer = window.setTimeout(() => {
-          armed = false;
-          setLabel(label);
-        }, 3000);
-      });
-      cmds.appendChild(b);
-    };
-    mkBtn("↺", "Undo", () => {
-      this.showPause(false);
-      this.onUndo?.();
-    });
-    mkBtn("½", "Draw", () => {
-      this.showPause(false);
-      this.onOfferDraw?.();
-    }, "Agree?");
-    mkBtn("⚑", "Resign", () => {
-      this.showPause(false);
-      this.onResign?.();
-    }, "Sure?");
+    // Pause menu holds only Resume + Quit (user direction: no undo/draw/
+    // resign surfaces — the scoreboard and log live in-game instead).
     const resume = document.createElement("button");
     resume.className = "scp-resume";
     resume.textContent = "Resume";
@@ -320,8 +281,10 @@ export class Hud {
       this.showPause(false);
       this.onMenu?.();
     });
-    pauseCard.append(resume, head, this.tallyEl, this.movesEl, cmds, quit);
+    pauseCard.append(resume, quit);
     this.pauseEl.appendChild(pauseCard);
+    this.infoEl.append(head, this.tallyEl, this.movesEl);
+    container.appendChild(this.infoEl);
     container.appendChild(this.pauseEl);
 
     // Promotion picker.
@@ -477,6 +440,7 @@ export class Hud {
       this.sideEl,
       this.thinkingEl,
       this.pauseEl,
+      this.infoEl,
       this.styleEl,
     ]) {
       e.remove();
@@ -493,6 +457,7 @@ export class Hud {
     for (const reset of this.confirmResets) reset();
     this.menuEl.style.display = active ? "flex" : "none";
     this.sideEl.style.display = active ? "none" : "flex";
+    this.infoEl.style.display = active ? "none" : "flex";
     this.turnEl.style.display = active ? "none" : "block";
     this.pauseEl.style.display = "none";
     if (active) this.overEl.style.display = "none";
