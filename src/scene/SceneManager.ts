@@ -118,6 +118,7 @@ export class SceneManager {
   readonly controls: OrbitControls;
   readonly sunDir = new THREE.Vector3(0.6, 0.34, 0.42).normalize();
   private sun!: THREE.DirectionalLight;
+  private rim!: THREE.DirectionalLight;
   private ambientLight!: THREE.AmbientLight;
   private skyMat!: THREE.ShaderMaterial;
   private readonly fpsEl: HTMLDivElement;
@@ -175,7 +176,14 @@ export class SceneManager {
     this.sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
     this.sun.position.copy(this.sunDir).multiplyScalar(100);
     this.ambientLight = new THREE.AmbientLight(0xbfd4de, 0.9);
-    this.scene.add(this.sun, this.ambientLight);
+    // Rim/back light opposite the sun (visibility): outlines every hull and
+    // mast so silhouettes separate from the water in all presets.
+    this.rim = new THREE.DirectionalLight(0xdfe9f2, 0.55);
+    this.rim.position
+      .set(-this.sunDir.x, Math.max(this.sunDir.y, 0.5), -this.sunDir.z)
+      .normalize()
+      .multiplyScalar(100);
+    this.scene.add(this.sun, this.rim, this.ambientLight);
 
     this.fpsEl = document.createElement("div");
     this.fpsEl.style.cssText =
@@ -234,6 +242,7 @@ export class SceneManager {
     ambientIntensity: number;
     zenith: string;
     horizon: string;
+    skyTint: string;
     cloudColor: string;
     cloudAmount: number;
     starIntensity: number;
@@ -244,6 +253,12 @@ export class SceneManager {
     this.sun.intensity = p.sunIntensity;
     this.ambientLight.color.set(p.ambient);
     this.ambientLight.intensity = p.ambientIntensity;
+    this.rim.color.set(p.skyTint);
+    this.rim.intensity = 0.45 + Math.max(0, 2.6 - p.sunIntensity) * 0.2;
+    this.rim.position
+      .set(-this.sunDir.x, Math.max(this.sunDir.y, 0.5), -this.sunDir.z)
+      .normalize()
+      .multiplyScalar(100);
     const u = this.skyMat.uniforms;
     (u.uZenith.value as THREE.Color).set(p.zenith);
     (u.uHorizon.value as THREE.Color).set(p.horizon);

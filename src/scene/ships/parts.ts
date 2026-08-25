@@ -12,6 +12,8 @@ export interface FleetMaterials {
   dark: THREE.MeshStandardMaterial;
   /** Flagship signal light — emissive, flashed red on check (Phase 3). */
   signal: THREE.MeshStandardMaterial;
+  /** Masthead running light — emissiveIntensity driven by time of day. */
+  lamp: THREE.MeshStandardMaterial;
 }
 
 export function makeFleetMaterials(ivory: boolean): FleetMaterials {
@@ -30,6 +32,7 @@ export function makeFleetMaterials(ivory: boolean): FleetMaterials {
         accent: m("#a8863f", { roughness: 0.5, metalness: 0.4 }),
         dark: m("#6b6455"),
         signal: m("#f5efdd", { emissive: "#f2e9c8", emissiveIntensity: 0.6 }),
+        lamp: m("#3a382e", { emissive: "#ffd9a0", emissiveIntensity: 0 }),
       }
     : {
         hull: m("#3a4148"),
@@ -37,6 +40,7 @@ export function makeFleetMaterials(ivory: boolean): FleetMaterials {
         accent: m("#2f8f8a", { roughness: 0.5, metalness: 0.3 }),
         dark: m("#1d2226"),
         signal: m("#d8e8e6", { emissive: "#bfe8e2", emissiveIntensity: 0.6 }),
+        lamp: m("#2e2c26", { emissive: "#ffd9a0", emissiveIntensity: 0 }),
       };
 }
 

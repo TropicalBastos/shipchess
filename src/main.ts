@@ -48,6 +48,9 @@ function paintPreset(p: ReturnType<typeof lerpPreset>): void {
   sm.applyPreset(p);
   ocean.setSunDir(sm.sunDir);
   ocean.setPalette(...oceanPaletteArgs(p));
+  ocean.setBoardGlow(p.boardGlow);
+  // Running lights fade in as the sun dims (moonlit ~1.0; day/golden 0).
+  fleet.setLampIntensity(Math.max(0, 1.55 - p.sunIntensity) * 2.2);
 }
 /** Smoothly cross-fade the whole lighting rig to a new time of day. */
 function applySunPreset(name: keyof typeof SUN_PRESETS): void {
