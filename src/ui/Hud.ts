@@ -110,13 +110,35 @@ const MENU_CSS = /* css */ `
   font: 12px ${FONT_UI}; letter-spacing: .1em; color: rgba(207,224,232,.55);
 }
 
-/* In-game side panel */
-.scp {
-  position: fixed; top: 10px; right: 10px; width: 208px; z-index: 10;
-  display: none; flex-direction: column; gap: 10px; padding: 12px;
-  background: rgba(8,20,28,.8); border: 1px solid #33566a; border-radius: 14px;
-  color: #dce7ea; font: 13px ${FONT_UI}; backdrop-filter: blur(3px);
+/* In-game corner button + pause overlay */
+.scp-mini {
+  position: fixed; top: 10px; right: 10px; z-index: 10; display: none;
+  align-items: center; gap: 7px; padding: 9px 14px; cursor: pointer;
+  background: rgba(8,20,28,.8); border: 1px solid #33566a; border-radius: 10px;
+  color: #e9ece4; font: 600 13px ${FONT_UI}; backdrop-filter: blur(3px);
+  transition: border-color .12s ease;
 }
+.scp-mini:hover { border-color: #d9b45c; }
+.scp-mini .ico { color: #d9b45c; }
+.scp-pause {
+  position: fixed; inset: 0; z-index: 22; display: none; align-items: center;
+  justify-content: center; background: rgba(4,12,18,.55);
+}
+.scp {
+  width: 250px; display: flex; flex-direction: column; gap: 10px; padding: 16px;
+  background: rgba(8,20,28,.92); border: 1px solid #33566a; border-radius: 14px;
+  color: #dce7ea; font: 13px ${FONT_UI};
+}
+.scp-resume {
+  padding: 10px; border: none; border-radius: 9px; cursor: pointer;
+  background: #d9b45c; color: #14232b; font: 700 14px ${FONT_UI};
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.scp-quit {
+  padding: 8px; cursor: pointer; border-radius: 8px; background: transparent;
+  color: #9fc4c9; border: 1px solid #33566a; font: 600 12px ${FONT_UI};
+}
+.scp-quit:hover { border-color: #e0523c; color: #e9ece4; }
 .scp-head {
   font: 600 10px ${FONT_UI}; letter-spacing: .22em; text-transform: uppercase;
   color: #9fc4c9; text-align: left;
@@ -170,6 +192,7 @@ export class Hud {
   private readonly movesEl: HTMLDivElement;
   private readonly tallyEl: HTMLDivElement;
   private readonly thinkingEl: HTMLDivElement;
+  private pauseEl!: HTMLDivElement;
   private escHandler!: (e: KeyboardEvent) => void;
   private styleEl!: HTMLStyleElement;
   private readonly confirmResets: Array<() => void> = [];
@@ -209,8 +232,19 @@ export class Hud {
     this.styleEl.textContent = MENU_CSS;
     document.head.appendChild(this.styleEl);
 
-    this.sideEl = el("div", "");
-    this.sideEl.className = "scp";
+    this.sideEl = el("button", "") as unknown as HTMLDivElement;
+    this.sideEl.className = "scp-mini";
+    this.sideEl.innerHTML = '<span class="ico">☰</span>Menu';
+    this.sideEl.addEventListener("click", () => this.showPause(true));
+    container.appendChild(this.sideEl);
+
+    this.pauseEl = el("div", "");
+    this.pauseEl.className = "scp-pause";
+    this.pauseEl.addEventListener("click", (e) => {
+      if (e.target === this.pauseEl) this.showPause(false); // backdrop closes
+    });
+    const pauseCard = document.createElement("div");
+    pauseCard.className = "scp";
     const head = document.createElement("div");
     head.className = "scp-head";
     head.textContent = "Captured ships";
@@ -263,12 +297,32 @@ export class Hud {
       });
       cmds.appendChild(b);
     };
-    mkBtn("↺", "Undo", () => this.onUndo?.());
-    mkBtn("½", "Draw", () => this.onOfferDraw?.(), "Agree?");
-    mkBtn("⚑", "Resign", () => this.onResign?.(), "Sure?");
-    mkBtn("☰", "Menu", () => this.onMenu?.());
-    this.sideEl.append(head, this.tallyEl, this.movesEl, cmds);
-    container.appendChild(this.sideEl);
+    mkBtn("↺", "Undo", () => {
+      this.showPause(false);
+      this.onUndo?.();
+    });
+    mkBtn("½", "Draw", () => {
+      this.showPause(false);
+      this.onOfferDraw?.();
+    }, "Agree?");
+    mkBtn("⚑", "Resign", () => {
+      this.showPause(false);
+      this.onResign?.();
+    }, "Sure?");
+    const resume = document.createElement("button");
+    resume.className = "scp-resume";
+    resume.textContent = "Resume";
+    resume.addEventListener("click", () => this.showPause(false));
+    const quit = document.createElement("button");
+    quit.className = "scp-quit";
+    quit.textContent = "Quit to main menu";
+    quit.addEventListener("click", () => {
+      this.showPause(false);
+      this.onMenu?.();
+    });
+    pauseCard.append(resume, head, this.tallyEl, this.movesEl, cmds, quit);
+    this.pauseEl.appendChild(pauseCard);
+    container.appendChild(this.pauseEl);
 
     // Promotion picker.
     this.promoEl = el(
@@ -297,8 +351,14 @@ export class Hud {
     this.promoEl.appendChild(card);
     this.promoEl.addEventListener("click", () => this.onPromotionCancel?.());
     this.escHandler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && this.promoEl.style.display !== "none") {
+      if (e.key !== "Escape") return;
+      if (this.promoEl.style.display !== "none") {
         this.onPromotionCancel?.();
+        return;
+      }
+      // In-game (corner button visible): Escape toggles the pause menu.
+      if (this.sideEl.style.display === "flex") {
+        this.showPause(this.pauseEl.style.display === "none" || this.pauseEl.style.display === "");
       }
     };
     window.addEventListener("keydown", this.escHandler);
@@ -416,10 +476,16 @@ export class Hud {
       this.menuEl,
       this.sideEl,
       this.thinkingEl,
+      this.pauseEl,
       this.styleEl,
     ]) {
       e.remove();
     }
+  }
+
+  showPause(active: boolean): void {
+    for (const reset of this.confirmResets) reset();
+    this.pauseEl.style.display = active ? "flex" : "none";
   }
 
   showMenu(active: boolean): void {
@@ -428,6 +494,7 @@ export class Hud {
     this.menuEl.style.display = active ? "flex" : "none";
     this.sideEl.style.display = active ? "none" : "flex";
     this.turnEl.style.display = active ? "none" : "block";
+    this.pauseEl.style.display = "none";
     if (active) this.overEl.style.display = "none";
   }
 
