@@ -11,7 +11,7 @@ describe("Hud promotion wiring (DOM)", () => {
   beforeEach(() => {
     hud?.dispose(); // the leak this test file caught (review M3-09)
     document.body.innerHTML = "";
-    hud = new Hud(document.body);
+    hud = new Hud(document.body, { version: 1, fastAnimations: false, cameraGlide: true, volume: 0.8 });
     picks = [];
     cancels = 0;
     hud.onPromotionPick = (p) => picks.push(p);
@@ -51,12 +51,62 @@ describe("Hud promotion wiring (DOM)", () => {
     expect(cancels).toBe(2);
   });
 
+  it("all seven end states render distinct banner text with correct winners", () => {
+    const cases: Array<[Parameters<typeof hud.showGameOver>[0], string]> = [
+      [{ kind: "checkmate", winner: "w" }, "Ivory fleet prevails"],
+      [{ kind: "resignation", winner: "b" }, "Charcoal fleet prevails"],
+      [{ kind: "resignation", winner: "b" }, "flag is struck"],
+      [{ kind: "stalemate" }, "Stalemate"],
+      [{ kind: "threefold" }, "threefold"],
+      [{ kind: "fifty-move" }, "fifty quiet moves"],
+      [{ kind: "insufficient-material" }, "insufficient firepower"],
+      [{ kind: "agreement" }, "both admirals agree"],
+    ];
+    for (const [end, text] of cases) {
+      hud.showGameOver(end, () => {}, () => {});
+      expect(document.body.textContent).toContain(text);
+    }
+  });
+
+  it("move list renders numbered pairs incl. an odd final ply", () => {
+    hud.setPosition({
+      fen: "x",
+      sanHistory: ["e4", "e5", "Nf3"],
+      captured: [],
+      inMenu: false,
+      reason: "reset",
+    });
+    expect(document.body.textContent).toContain("1. e4 e5");
+    expect(document.body.textContent).toContain("2. Nf3");
+  });
+
+  it("scoreboard renders captured chips per fleet with the advantage badge", () => {
+    hud.setPosition({
+      fen: "x",
+      sanHistory: [],
+      captured: [
+        { type: "p", color: "b" },
+        { type: "q", color: "b" },
+        { type: "n", color: "w" },
+      ],
+      inMenu: false,
+      reason: "reset",
+    });
+    const chipsW = [...document.querySelectorAll("[data-tally-w] .scp-chip")];
+    const chipsB = [...document.querySelectorAll("[data-tally-b] .scp-chip")];
+    expect(chipsW.map((c) => c.textContent)).toEqual(["P", "Q"]);
+    expect(chipsB.map((c) => c.textContent)).toEqual(["N"]);
+    // Ivory captured p+q (10) vs charcoal's n (3): Ivory leads +7.
+    expect(document.querySelector("[data-adv-w]")?.textContent).toBe("+7");
+    expect(document.querySelector("[data-adv-b]")?.textContent).toBe("");
+  });
+
   it("turn pill and game-over banner render the right text", () => {
     hud.setTurn("w");
     expect(document.body.textContent).toContain("Ivory fleet to move");
-    hud.showGameOver({ kind: "stalemate" });
+    hud.showGameOver({ kind: "stalemate" }, () => {}, () => {});
     expect(document.body.textContent).toContain("Stalemate");
-    hud.showGameOver({ kind: "checkmate", winner: "b" });
+    hud.showGameOver({ kind: "checkmate", winner: "b" }, () => {}, () => {});
     expect(document.body.textContent).toContain("Charcoal fleet prevails");
   });
 });

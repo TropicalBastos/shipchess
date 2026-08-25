@@ -41,8 +41,10 @@ export interface EndState {
     | "stalemate"
     | "threefold"
     | "fifty-move"
-    | "insufficient-material";
-  /** Winner on checkmate; undefined for draws. */
+    | "insufficient-material"
+    | "resignation"
+    | "agreement";
+  /** Winner on checkmate/resignation; undefined for draws. */
   winner?: Color;
 }
 
@@ -55,6 +57,11 @@ export class ChessGame {
 
   turn(): Color {
     return this.chess.turn();
+  }
+
+  /** Fresh starting position (rematch/new game). */
+  reset(): void {
+    this.chess = new Chess();
   }
 
   fen(): string {
@@ -120,6 +127,42 @@ export class ChessGame {
     const end = this.endState();
     if (end) applied.end = end;
     return applied;
+  }
+
+  /** The side currently in check (the side to move), if any. */
+  checkedNow(): Color | null {
+    return this.chess.inCheck() ? this.chess.turn() : null;
+  }
+
+  /** Undo n half-moves. Returns the resulting FEN (no-op safe). */
+  undoPlies(n: number): string {
+    for (let i = 0; i < n; i++) {
+      if (!this.chess.undo()) break;
+    }
+    return this.chess.fen();
+  }
+
+  historyLength(): number {
+    return this.chess.history().length;
+  }
+
+  /** SAN move list for the HUD. */
+  sanHistory(): string[] {
+    return this.chess.history();
+  }
+
+  /**
+   * Captured pieces derived from authoritative history (never accumulated
+   * separately — Phase 4 review P4-08): survives undo and rematch.
+   */
+  capturedPieces(): Array<{ type: Piece; color: Color }> {
+    return this.chess
+      .history({ verbose: true })
+      .filter((m) => m.captured)
+      .map((m) => ({
+        type: m.captured as Piece,
+        color: (m.color === "w" ? "b" : "w") as Color,
+      }));
   }
 
   /**

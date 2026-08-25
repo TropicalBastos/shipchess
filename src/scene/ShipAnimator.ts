@@ -38,7 +38,6 @@ export class ShipAnimator implements MoveAnimator {
   private readonly animator: Animator;
   private readonly effects: Effects;
   private readonly now: () => number;
-  private captured: Array<{ type: AppliedMove["piece"]; color: "w" | "b" }> = [];
 
   constructor(
     fleet: Fleet,
@@ -99,15 +98,9 @@ export class ShipAnimator implements MoveAnimator {
 
     await Promise.all(jobs);
 
-    // Reconcile with the authoritative position; update the tally.
-    if (move.capturedPiece) {
-      this.captured.push({
-        type: move.capturedPiece,
-        color: move.color === "w" ? "b" : "w",
-      });
-    }
+    // Reconcile with the authoritative position. (The captured tally is
+    // driven separately from game history via onPosition — review P4-08.)
     this.fleet.syncTo(move.fenAfter);
-    this.fleet.setCaptured(this.captured);
 
     // Promoted ship rises from the depths.
     if (move.promotedTo) {
