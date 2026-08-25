@@ -1,10 +1,15 @@
 import * as THREE from "three";
+import { ChessGame } from "./game/ChessGame";
+import { GameController } from "./game/GameController";
+import { PickController } from "./input/PickController";
 import { Fleet } from "./scene/Fleet";
+import { Highlights } from "./scene/Highlights";
 import { Ocean } from "./scene/Ocean";
 import { SceneManager } from "./scene/SceneManager";
 import { displace, wrapTime } from "./scene/WaveField";
 import { START_FEN } from "./scene/fen";
 import { BOARD_HALF, SQUARE_SIZE } from "./scene/waveConstants";
+import { Hud } from "./ui/Hud";
 import "./style.css";
 
 const app = document.getElementById("app")!;
@@ -14,6 +19,28 @@ sm.scene.add(ocean.mesh);
 
 const fleet = new Fleet(sm.scene);
 fleet.syncTo(START_FEN);
+
+// ---- Game wiring (Phase 3: teleport animator; Phase 4 swaps the implementation)
+const highlights = new Highlights(sm.scene);
+const hud = new Hud(app);
+const game = new ChessGame();
+const controller = new GameController(
+  game,
+  { play: async (move) => fleet.syncTo(move.fenAfter) },
+  {
+    onSelection: (sq, legal) => highlights.setSelection(sq, legal),
+    onDenied: (sq) => highlights.flashDenial(sq),
+    onCheck: (color) => fleet.setCheck(color),
+    onTurn: (color) => hud.setTurn(color),
+    onPromotionPrompt: (active) => hud.showPromotion(active),
+    onGameOver: (end) => hud.showGameOver(end),
+  },
+);
+hud.onPromotionPick = (p) => void controller.choosePromotion(p);
+hud.onPromotionCancel = () => controller.cancelPromotion();
+new PickController(sm.renderer.domElement, sm.camera, (square) =>
+  void controller.clickSquare(square),
+);
 
 /** Anything that floats: anchored at a REST position, advected by the map. */
 interface Floater {
@@ -106,6 +133,7 @@ function frame(now: number): void {
   const t = wrapTime(elapsed);
   ocean.setTime(t);
   fleet.update(t);
+  highlights.update(t, dt);
 
   for (const f of floaters) {
     const s = displace(f.restX, f.restZ, t);

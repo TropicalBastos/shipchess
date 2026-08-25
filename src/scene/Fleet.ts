@@ -144,6 +144,18 @@ export class Fleet {
     return s ? { type: s.type, color: s.color } : null;
   }
 
+  private checkedColor: PieceColor | null = null;
+
+  /** Check indication: the checked side's flagship signal light flashes red. */
+  setCheck(color: PieceColor | null): void {
+    if (this.checkedColor && this.checkedColor !== color) {
+      const m = this.materials[this.checkedColor].signal;
+      m.emissive.set(this.checkedColor === "w" ? "#f2e9c8" : "#bfe8e2");
+      m.emissiveIntensity = 0.6;
+    }
+    this.checkedColor = color;
+  }
+
   get flagships(): THREE.Group[] {
     return this.ships.filter((s) => s.type === "k").map((s) => s.object);
   }
@@ -158,6 +170,11 @@ export class Fleet {
 
   /** Buoyancy: multi-point hull sampling of the wave forward map. */
   update(t: number): void {
+    if (this.checkedColor) {
+      const m = this.materials[this.checkedColor].signal;
+      m.emissive.set("#ff2214");
+      m.emissiveIntensity = 1.2 + Math.sin(t * 9) * 1.0;
+    }
     for (const s of this.ships) {
       const spec = SHIP_SPECS[s.type];
       // Shared, unshifted time: ships must ride the exact surface the GPU
