@@ -102,6 +102,11 @@ export class SceneManager {
   private glideTo = 0;
   private glideT = 1;
 
+  /** Immediately stop any in-flight camera glide (reduced-motion honesty). */
+  cancelGlide(): void {
+    this.glideT = 1;
+  }
+
   glideToSide(color: "w" | "b"): void {
     this.glideFrom = Math.atan2(this.camera.position.x, this.camera.position.z);
     this.glideTo = color === "w" ? 0 : Math.PI;

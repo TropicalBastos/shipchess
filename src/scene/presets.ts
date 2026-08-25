@@ -53,3 +53,11 @@ export const SUN_PRESETS: Record<string, SunPreset> = {
 };
 
 export type SunPresetName = keyof typeof SUN_PRESETS;
+
+/** The one place that decides which preset colors feed the ocean — fog is
+ * the HORIZON, never the fresnel sky tint (P7-04; locked by test). */
+export function oceanPaletteArgs(
+  p: SunPreset,
+): [string, string, string, string] {
+  return [p.deep, p.crest, p.skyTint, p.horizon];
+}

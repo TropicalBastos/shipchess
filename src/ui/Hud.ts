@@ -41,11 +41,17 @@ const FONT_UI = '"Saira", system-ui, sans-serif';
 
 const MENU_CSS = /* css */ `
 .scm-root {
-  position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 14px; color: #f2f0e6;
+  position: fixed; inset: 0; z-index: 25; overflow-y: auto; color: #f2f0e6;
   font: 14px ${FONT_UI}; text-align: center;
-  overflow-y: auto; padding: 24px 0 44px; /* short viewports scroll (P7-06) */
 }
+/* Inner wrapper + auto margins = safe centering: tall content anchors to the
+   top and scrolls, short content centers (round-2 RF-01). */
+.scm-inner {
+  min-height: 100%; display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: 24px 0 44px; box-sizing: border-box;
+}
+.scm-inner > :first-child { margin-top: auto; }
+.scm-inner > :last-child { margin-bottom: auto; }
 .scm-title {
   font: 400 clamp(44px, 7vw, 68px) "Saira Stencil One", ${FONT_UI};
   letter-spacing: .12em; line-height: 1; color: #f2f0e6;
@@ -346,6 +352,7 @@ export class Hud {
     this.menuEl = el("div", "");
     this.menuEl.className = "scm-root";
     this.menuEl.innerHTML = `
+      <div class="scm-inner">
       <div class="scm-title">SHIPCHESS</div>
       <div class="scm-tag">Chess on the open sea</div>
       <div class="scm-cards">
@@ -392,6 +399,7 @@ export class Hud {
         </div>
       </div>
       <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move</div>
+      </div>
     `;
     container.appendChild(this.menuEl);
 

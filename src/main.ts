@@ -13,7 +13,7 @@ import { PickController } from "./input/PickController";
 import type { PieceType } from "./scene/ships/builders";
 import { loadSettings, saveSettings } from "./ui/settings";
 import { AudioManager } from "./audio/AudioManager";
-import { SUN_PRESETS } from "./scene/presets";
+import { SUN_PRESETS, oceanPaletteArgs } from "./scene/presets";
 import { ShipAnimator } from "./scene/ShipAnimator";
 import { Effects } from "./scene/effects/sprites";
 import { Fleet } from "./scene/Fleet";
@@ -47,7 +47,7 @@ function applySunPreset(name: keyof typeof SUN_PRESETS): void {
   const p = SUN_PRESETS[name] ?? SUN_PRESETS.day;
   sm.applyPreset(p);
   ocean.setSunDir(sm.sunDir);
-  ocean.setPalette(p.deep, p.crest, p.skyTint, p.horizon);
+  ocean.setPalette(...oceanPaletteArgs(p));
 }
 applySunPreset(settings.sunPreset);
 const highlights = new Highlights(sm.scene);
@@ -203,6 +203,7 @@ hud.onSettingsChange = (s) => {
   audio.setVolume(s.volume);
   applySunPreset(s.sunPreset);
   animator.instantMode = document.hidden || s.reducedMotion;
+  if (s.reducedMotion || !s.cameraGlide) sm.cancelGlide(); // RF-02
 };
 
 // Debug handle (harmless in production; invaluable under automation).

@@ -11,7 +11,7 @@ import { Fleet } from "./Fleet";
 import { Ocean } from "./Ocean";
 import { ShipAnimator } from "./ShipAnimator";
 import { Effects } from "./effects/sprites";
-import { SUN_PRESETS } from "./presets";
+import { SUN_PRESETS, oceanPaletteArgs } from "./presets";
 
 const nullView: GameView = {
   onSelection: () => {},
@@ -45,6 +45,14 @@ describe("Phase 7: sun presets", () => {
     }
   });
 
+  it("oceanPaletteArgs feeds fog from the horizon, never the sky tint", () => {
+    for (const p of Object.values(SUN_PRESETS)) {
+      const [, , tint, fog] = oceanPaletteArgs(p);
+      expect(tint).toBe(p.skyTint);
+      expect(fog).toBe(p.horizon);
+    }
+  });
+
   it("ocean palette setters apply preset colors", () => {
     const o = new Ocean(new THREE.Vector3(0, 1, 0), 0.5);
     o.setPalette("#112233", "#445566", "#778899", "#aabbcc");
@@ -66,7 +74,13 @@ describe("Phase 7: reduced-motion path completes a full scripted game", () => {
     const stored = loadSettings();
     expect(stored.reducedMotion).toBe(true);
     const scene = new THREE.Scene();
-    scene.add(new Ocean(new THREE.Vector3(0, 1, 0), stored.quality === "low" ? 0.5 : 1).mesh);
+    const lowOcean = new Ocean(new THREE.Vector3(0, 1, 0), stored.quality === "low" ? 0.5 : 1);
+    scene.add(lowOcean.mesh);
+    const highCount = new Ocean(new THREE.Vector3(0, 1, 0), 1).mesh
+      .geometry.attributes.position.count;
+    expect(lowOcean.mesh.geometry.attributes.position.count).toBeLessThan(
+      highCount * 0.3,
+    ); // the stored quality actually took effect (RF-03)
     const fleet = new Fleet(scene);
     const game = new ChessGame();
     const animator = new Animator();
