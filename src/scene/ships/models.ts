@@ -36,10 +36,10 @@ export async function preloadShipModels(): Promise<void> {
   const loader = new GLTFLoader();
   const base = import.meta.env.BASE_URL;
   const wanted: [string, string, number][] = [
-    ["p:w", `${base}models/pawn_white.glb`, 0.55],
-    ["p:b", `${base}models/pawn_black.glb`, 0.55],
-    ["r:w", `${base}models/rook_white.glb`, 0.7],
-    ["r:b", `${base}models/rook_black.glb`, 0.7],
+    ["p:w", `${base}models/pawn_white.glb`, 0.45],
+    ["p:b", `${base}models/pawn_black.glb`, 0.45],
+    ["r:w", `${base}models/rook_white.glb`, 0.85],
+    ["r:b", `${base}models/rook_black.glb`, 0.85],
   ];
   await Promise.all(
     wanted.map(async ([key, url, height]) => {
