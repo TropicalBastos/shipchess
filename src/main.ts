@@ -292,21 +292,14 @@ function labelSprite(text: string): THREE.Sprite {
 }
 for (let i = 0; i < 8; i++) {
   const center = (i - 3.5) * SQUARE_SIZE;
-  // files a–h along the near edge, ranks 1–8 along the left edge
-  addFloater(
-    labelSprite("abcdefgh"[i]),
-    center,
-    BOARD_HALF + 0.55,
-    0.25,
-    false,
-  );
-  addFloater(
-    labelSprite(String(i + 1)),
-    -(BOARD_HALF + 0.55),
-    -center,
-    0.25,
-    false,
-  );
+  // files a–h along the near edge, ranks 1–8 along the left edge.
+  // Labels are PINNED at rest height, not floaters — readable coordinates
+  // must not sway with the water (user direction, 2026-08-25).
+  const file = labelSprite("abcdefgh"[i]);
+  file.position.set(center, 0.25, BOARD_HALF + 0.55);
+  const rank = labelSprite(String(i + 1));
+  rank.position.set(-(BOARD_HALF + 0.55), 0.25, -center);
+  sm.scene.add(file, rank);
 }
 
 // WebGL context loss: pause the world (three.js re-uploads GPU resources on
