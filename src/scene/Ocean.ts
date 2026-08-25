@@ -71,7 +71,8 @@ void main() {
 
   // 8×8 checker + grid lines, only inside the board.
   vec2 cell = floor(vRest + ${BOARD_HALF.toFixed(1)});
-  float checker = mod(cell.x + cell.y, 2.0);
+  // +1.0 so a1 (cell 0,7) is a DARK square, per chess law (review W2-03).
+  float checker = mod(cell.x + cell.y + 1.0, 2.0);
   vec3 squares = mix(uDarkSquare, uLightSquare, checker);
   vec2 g = abs(fract(vRest + 0.5) - 0.5);
   float line = 1.0 - smoothstep(0.015, 0.05, min(g.x, g.y));
