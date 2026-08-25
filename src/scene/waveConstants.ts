@@ -14,10 +14,12 @@ export const TIME_WRAP = 512;
 // Board geometry (world units). 8×8 squares centered on the origin.
 export const SQUARE_SIZE = 1.0;
 export const BOARD_HALF = 4.0;
-/** Ring outside the board over which full wave amplitude returns. */
-export const CALM_FALLOFF = 1.5;
+/** Ring outside the board over which full wave amplitude returns. Wide
+ * enough that the coordinate labels and corner buoys (~0.35–0.55 outside
+ * the board) sit in mostly-calm water. */
+export const CALM_FALLOFF = 2.5;
 /** Fractional amplitude reduction inside the board (calm lagoon). */
-export const CALM_DAMPING = 0.85;
+export const CALM_DAMPING = 0.92;
 
 export interface WaveSpec {
   dirX: number;
@@ -28,14 +30,16 @@ export interface WaveSpec {
 
 /** One long swell + three chop terms. Directions are normalized in derivation. */
 export const RAW_WAVES: WaveSpec[] = [
-  { dirX: 1.0, dirZ: 0.25, amplitude: 0.2, wavelength: 14.0 },
-  { dirX: 0.7, dirZ: -0.6, amplitude: 0.055, wavelength: 5.3 },
-  { dirX: -0.3, dirZ: 0.85, amplitude: 0.035, wavelength: 3.1 },
-  { dirX: 0.55, dirZ: 0.75, amplitude: 0.02, wavelength: 2.1 },
+  { dirX: 1.0, dirZ: 0.25, amplitude: 0.09, wavelength: 14.0 },
+  { dirX: 0.7, dirZ: -0.6, amplitude: 0.028, wavelength: 5.3 },
+  { dirX: -0.3, dirZ: 0.85, amplitude: 0.018, wavelength: 3.1 },
+  { dirX: 0.55, dirZ: 0.75, amplitude: 0.01, wavelength: 2.1 },
 ];
 
-/** Total steepness ΣQᵢAᵢkᵢ. MUST stay ≤ 1 or the surface self-intersects. */
-export const STEEPNESS = 0.72;
+/** Total steepness ΣQᵢAᵢkᵢ. MUST stay ≤ 1 or the surface self-intersects.
+ * Kept well below the cap: high steepness also means strong horizontal
+ * advection, which read as ships surging around like toys. */
+export const STEEPNESS = 0.45;
 
 export interface Wave {
   dirX: number;
