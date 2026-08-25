@@ -16,9 +16,14 @@ export class AudioManager {
     this.volume = volume;
   }
 
+  /** Kill switch: all sound disabled by user request (2026-08-25). With no
+   * context ever created, every cue below is a no-op. Flip to re-enable. */
+  static readonly SOUND_DISABLED = true;
+
   /** Call on user gestures; idempotent, and resumes a suspended context
    * (Chrome may create contexts 'suspended' even post-gesture — P7-03). */
   unlock(): void {
+    if (AudioManager.SOUND_DISABLED) return;
     if (typeof AudioContext === "undefined") return;
     if (this.ctx) {
       if (this.ctx.state === "suspended") void this.ctx.resume();
