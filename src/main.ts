@@ -1,7 +1,9 @@
 import * as THREE from "three";
+import { Fleet } from "./scene/Fleet";
 import { Ocean } from "./scene/Ocean";
 import { SceneManager } from "./scene/SceneManager";
 import { displace, wrapTime } from "./scene/WaveField";
+import { START_FEN } from "./scene/fen";
 import { BOARD_HALF, SQUARE_SIZE } from "./scene/waveConstants";
 import "./style.css";
 
@@ -9,6 +11,9 @@ const app = document.getElementById("app")!;
 const sm = new SceneManager(app);
 const ocean = new Ocean(sm.sunDir);
 sm.scene.add(ocean.mesh);
+
+const fleet = new Fleet(sm.scene);
+fleet.syncTo(START_FEN);
 
 /** Anything that floats: anchored at a REST position, advected by the map. */
 interface Floater {
@@ -111,6 +116,7 @@ function frame(now: number): void {
   elapsed += dt;
   const t = wrapTime(elapsed);
   ocean.setTime(t);
+  fleet.update(t);
 
   for (const f of floaters) {
     const s = displace(f.restX, f.restZ, t);
