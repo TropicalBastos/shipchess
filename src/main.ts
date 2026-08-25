@@ -39,17 +39,6 @@ function addFloater(
   floaters.push({ object, restX, restZ, yOffset, tilt });
 }
 
-// Debug cube — THE Phase 1 visual parity check. In live water, off-board.
-addFloater(
-  new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.5, 0.5),
-    new THREE.MeshStandardMaterial({ color: "#e07b39" }),
-  ),
-  6,
-  3,
-  0.1,
-);
-
 // Corner buoys marking the play area (just outside the calm falloff start).
 function buoy(): THREE.Object3D {
   const g = new THREE.Group();
