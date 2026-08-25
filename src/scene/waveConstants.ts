@@ -81,6 +81,10 @@ export const MIN_VERTS_PER_WAVELENGTH = 16;
 
 // Render-scale config values (quality knobs from day one — see plan risk table).
 export const OCEAN_SIZE = 90;
+/** Half-extent the warped ocean edge reaches (world units). Inner cells keep
+ * full density; the outer grid stretches to this radius so the water meets
+ * the fogged horizon instead of ending in a visible seam. */
+export const OCEAN_FAR_HALF = 450;
 export const OCEAN_SEGMENTS = Math.ceil(
   (OCEAN_SIZE * MIN_VERTS_PER_WAVELENGTH) / SHORTEST_WAVELENGTH,
 );

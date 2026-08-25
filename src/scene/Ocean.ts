@@ -9,6 +9,7 @@ import * as THREE from "three";
 import {
   BOARD_HALF,
   OCEAN_SEGMENTS,
+  OCEAN_FAR_HALF,
   OCEAN_SIZE,
   wavesGlsl,
 } from "./waveConstants";
@@ -115,6 +116,21 @@ export class Ocean {
     const geo = new THREE.PlaneGeometry(OCEAN_SIZE, OCEAN_SIZE, segs, segs);
     geo.rotateX(-Math.PI / 2); // position attribute now spans XZ, y = 0
 
+    // Horizon stretch: quartic per-axis warp. Cells near the board keep full
+    // density (≤2% stretch inside |x| < OCEAN_SIZE/4); the outermost cells
+    // reach OCEAN_FAR_HALF so the surface meets the fogged horizon with no
+    // visible mesh edge. Waves are undersampled far out, but full fog lands
+    // well before sampling breaks down.
+    const half = OCEAN_SIZE / 2;
+    const stretch = OCEAN_FAR_HALF / half - 1;
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      pos.setX(i, x * (1 + stretch * (Math.abs(x) / half) ** 4));
+      pos.setZ(i, z * (1 + stretch * (Math.abs(z) / half) ** 4));
+    }
+
     this.uniforms = {
       uTime: { value: 0 },
       uSunDir: { value: sunDir.clone().normalize() },
@@ -124,8 +140,8 @@ export class Ocean {
       uLightSquare: { value: new THREE.Color("#aac9c0") },
       uDarkSquare: { value: new THREE.Color("#26505c") },
       uFogColor: { value: new THREE.Color("#e5e9df") },
-      uFogNear: { value: 55 },
-      uFogFar: { value: 160 },
+      uFogNear: { value: 70 },
+      uFogFar: { value: 340 },
     };
 
     const mat = new THREE.ShaderMaterial({

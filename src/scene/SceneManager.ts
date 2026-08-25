@@ -46,7 +46,7 @@ export class SceneManager {
       50,
       window.innerWidth / window.innerHeight,
       0.1,
-      400,
+      1200,
     );
     this.camera.position.set(0, 7.5, 11);
 
@@ -74,9 +74,9 @@ export class SceneManager {
       side: THREE.BackSide,
       depthWrite: false,
     });
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 16), this.skyMat);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 24, 16), this.skyMat);
     this.scene.add(sky);
-    this.scene.fog = new THREE.Fog(horizon, 55, 160);
+    this.scene.fog = new THREE.Fog(horizon, 70, 340);
 
     this.sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
     this.sun.position.copy(this.sunDir).multiplyScalar(100);
