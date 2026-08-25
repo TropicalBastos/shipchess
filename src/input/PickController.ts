@@ -31,18 +31,22 @@ export class PickController {
     this.camera = camera;
     this.onSquareClick = onSquareClick;
     canvas.style.touchAction = "none";
+    // Pointer identity: real touches carry distinct nonzero ids; mouse and
+    // synthetic events may report 0/undefined. Treat those as wildcards so
+    // strict id-matching never eats a legitimate click (seen with injected
+    // events), while true multi-touch still cancels the gesture (R2-01).
+    const samePointer = (a: number | undefined, b: number | undefined) =>
+      !a || !b || a === b;
     canvas.addEventListener("pointerdown", (e) => {
-      // Single-pointer ownership: a second touch cancels the gesture instead
-      // of hijacking it (round-2 review R2-01).
-      if (this.down) {
-        this.down = null;
+      if (this.down && !samePointer(e.pointerId, this.down.pointerId)) {
+        this.down = null; // second concurrent pointer: cancel, don't hijack
         return;
       }
       this.down = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
       this.maxMoved = 0;
     });
     canvas.addEventListener("pointermove", (e) => {
-      if (!this.down || e.pointerId !== this.down.pointerId) return;
+      if (!this.down || !samePointer(e.pointerId, this.down.pointerId)) return;
       // Track PEAK displacement: an orbit drag that returns to its origin
       // must never read as a click (Phase 3 review W3-02).
       this.maxMoved = Math.max(
@@ -54,7 +58,7 @@ export class PickController {
       this.down = null;
     });
     canvas.addEventListener("pointerup", (e) => {
-      if (!this.down || e.pointerId !== this.down.pointerId) return;
+      if (!this.down) return;
       const moved = Math.max(
         this.maxMoved,
         Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y),

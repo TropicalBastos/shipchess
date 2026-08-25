@@ -91,7 +91,33 @@ export class SceneManager {
     });
   }
 
+  // Camera glide: swings gently to the active fleet's side each turn,
+  // running on its own track (never blocks or extends move animations).
+  private glideFrom: number | null = null;
+  private glideTo = 0;
+  private glideT = 1;
+
+  glideToSide(color: "w" | "b"): void {
+    this.glideFrom = Math.atan2(this.camera.position.x, this.camera.position.z);
+    this.glideTo = color === "w" ? 0 : Math.PI;
+    this.glideT = 0;
+  }
+
+  private updateGlide(dt: number): void {
+    if (this.glideFrom === null || this.glideT >= 1) return;
+    this.glideT = Math.min(1, this.glideT + dt / 1.1);
+    const v = this.glideT * this.glideT * (3 - 2 * this.glideT);
+    let d = (this.glideTo - this.glideFrom) % (2 * Math.PI);
+    if (d > Math.PI) d -= 2 * Math.PI;
+    if (d < -Math.PI) d += 2 * Math.PI;
+    const az = this.glideFrom + d * v;
+    const r = Math.hypot(this.camera.position.x, this.camera.position.z);
+    this.camera.position.set(Math.sin(az) * r, this.camera.position.y, Math.cos(az) * r);
+    this.camera.lookAt(0, 0, 0);
+  }
+
   render(dt: number): void {
+    this.updateGlide(dt);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.frames++;
