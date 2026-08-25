@@ -116,7 +116,8 @@ const MENU_CSS = /* css */ `
   display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
   justify-content: center; max-width: 460px; padding: 4px 0;
 }
-.scm-light { width: 240px; }
+.scm-light { width: 330px; background: rgba(8,20,28,.75); border-radius: 9px; }
+.scm-tod { display: flex; flex-direction: column; gap: 6px; align-items: center; }
 .scm-foot {
   position: fixed; bottom: 14px; left: 0; right: 0; text-align: center;
   font: 12px ${FONT_UI}; letter-spacing: .1em; color: rgba(207,224,232,.55);
@@ -408,8 +409,8 @@ export class Hud {
           </div>
         </div>
       </div>
-      <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move</div>
       </div>
+      <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move</div>
     `;
     container.appendChild(this.menuEl);
 
@@ -562,7 +563,7 @@ export class Hud {
   showMenu(active: boolean): void {
     // Armed confirms never leak across games/menus (review P5-10).
     for (const reset of this.confirmResets) reset();
-    this.menuEl.style.display = active ? "flex" : "none";
+    this.menuEl.style.display = active ? "block" : "none";
     this.sideEl.style.display = active ? "none" : "flex";
     this.infoEl.style.display = active ? "none" : "flex";
     this.turnEl.style.display = active ? "none" : "block";
