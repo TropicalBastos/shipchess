@@ -53,8 +53,8 @@ describe("Hud promotion wiring (DOM)", () => {
 
   it("all seven end states render distinct banner text with correct winners", () => {
     const cases: Array<[Parameters<typeof hud.showGameOver>[0], string]> = [
-      [{ kind: "checkmate", winner: "w" }, "Ivory fleet prevails"],
-      [{ kind: "resignation", winner: "b" }, "Charcoal fleet prevails"],
+      [{ kind: "checkmate", winner: "w" }, "White fleet prevails"],
+      [{ kind: "resignation", winner: "b" }, "Black fleet prevails"],
       [{ kind: "resignation", winner: "b" }, "flag is struck"],
       [{ kind: "stalemate" }, "Stalemate"],
       [{ kind: "threefold" }, "threefold"],
@@ -103,10 +103,10 @@ describe("Hud promotion wiring (DOM)", () => {
 
   it("turn pill and game-over banner render the right text", () => {
     hud.setTurn("w");
-    expect(document.body.textContent).toContain("Ivory fleet to move");
+    expect(document.body.textContent).toContain("White fleet to move");
     hud.showGameOver({ kind: "stalemate" }, () => {}, () => {});
     expect(document.body.textContent).toContain("Stalemate");
     hud.showGameOver({ kind: "checkmate", winner: "b" }, () => {}, () => {});
-    expect(document.body.textContent).toContain("Charcoal fleet prevails");
+    expect(document.body.textContent).toContain("Black fleet prevails");
   });
 });

@@ -274,10 +274,10 @@ export class Hud {
     this.tallyEl = document.createElement("div");
     this.tallyEl.innerHTML =
       `<div class="scp-fleet"><span class="scm-dot scm-dot-w"></span>` +
-      `<span class="scp-fleet-name">Ivory</span>` +
+      `<span class="scp-fleet-name">White</span>` +
       `<span class="scp-chips" data-tally-w></span><span class="scp-adv" data-adv-w></span></div>` +
       `<div class="scp-fleet"><span class="scm-dot scm-dot-b"></span>` +
-      `<span class="scp-fleet-name">Charcoal</span>` +
+      `<span class="scp-fleet-name">Black</span>` +
       `<span class="scp-chips" data-tally-b></span><span class="scp-adv" data-adv-b></span></div>`;
     this.movesEl = document.createElement("div");
     this.movesEl.className = "scp-log";
@@ -378,8 +378,8 @@ export class Hud {
       <div class="scm-solo" hidden>
         <div class="scm-label">Your fleet</div>
         <div class="scm-seg" data-group="fleet">
-          <button class="scm-seg-btn sel" data-v="w"><span class="scm-dot scm-dot-w"></span>Ivory</button>
-          <button class="scm-seg-btn" data-v="b"><span class="scm-dot scm-dot-b"></span>Charcoal</button>
+          <button class="scm-seg-btn sel" data-v="w"><span class="scm-dot scm-dot-w"></span>White</button>
+          <button class="scm-seg-btn" data-v="b"><span class="scm-dot scm-dot-b"></span>Black</button>
         </div>
         <div class="scm-label">Opposing rank</div>
         <div class="scm-seg scm-seg-4" data-group="rank">
@@ -575,7 +575,7 @@ export class Hud {
 
   setTurn(color: Color): void {
     this.turnEl.textContent =
-      color === "w" ? "Ivory fleet to move" : "Charcoal fleet to move";
+      color === "w" ? "White fleet to move" : "Black fleet to move";
   }
 
   setThinking(active: boolean): void {
@@ -624,8 +624,8 @@ export class Hud {
       end.winner === undefined
         ? ""
         : end.winner === "w"
-          ? " — the Ivory fleet prevails"
-          : " — the Charcoal fleet prevails";
+          ? " — the White fleet prevails"
+          : " — the Black fleet prevails";
     this.overEl.innerHTML = "";
     this.overEl.appendChild(el("div", "", END_TEXT[end.kind] + winner));
     const row = el("div", "display:flex;gap:10px");
