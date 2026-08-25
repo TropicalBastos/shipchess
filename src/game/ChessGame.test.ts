@@ -492,3 +492,16 @@ describe("Phase 5 review locks", () => {
     expect(gc.currentState()).toBe("awaitingInput");
   });
 });
+
+describe("Phase 5 round-2 locks", () => {
+  it("an AI promotion reply without a piece resigns cleanly, never deadlocks (RF-02)", async () => {
+    const { view, calls } = makeView();
+    const game = new ChessGame("4k3/8/8/8/8/8/6p1/4K3 b - - 0 1");
+    const ai = { requestMove: async () => ({ from: "g2", to: "g1" }) }; // no promotion!
+    const gc = new GameController(game, instantAnimator, view, ai);
+    gc.startGame({ aiColor: "b" }, false);
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    expect(gc.currentState()).toBe("gameOver");
+    expect(calls.over).toEqual([{ kind: "resignation", winner: "w" }]);
+  });
+});

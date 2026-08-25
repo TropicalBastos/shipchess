@@ -132,7 +132,9 @@ export class GameController {
     this.view.onCheck(null);
     this.syncPosition();
     this.view.onTurn(this.game.turn());
-    if (config.aiColor === "w") void this.aiMove();
+    // Whichever color the AI commands — if it is to move (fresh game as
+    // white, or a custom FEN mid-position), it moves.
+    if (config.aiColor === this.game.turn()) void this.aiMove();
   }
 
   /** Back to the menu (idle ocean). */
@@ -294,6 +296,12 @@ export class GameController {
       }
       if (!this.game.legalDestinations(reply.from).includes(reply.to)) {
         throw new Error(`illegal AI move ${reply.from}->${reply.to}`);
+      }
+      // A promotion square without a promotion piece would throw inside
+      // commit() with state already 'animating' — catch it HERE so the
+      // failure resolves as AI resignation, never a deadlock (RF-02).
+      if (this.game.isPromotion(reply.from, reply.to) && !reply.promotion) {
+        throw new Error(`AI promotion reply missing piece ${reply.from}->${reply.to}`);
       }
       this.state = "awaitingInput";
       await this.commit(reply.from, reply.to, reply.promotion);

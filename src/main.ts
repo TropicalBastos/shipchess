@@ -65,13 +65,14 @@ const controller: GameController = new GameController(
     },
     onPromotionPrompt: (active) => hud.showPromotion(active),
     onGameOver: (end) => {
+      const myEnd = ++endSeq; // identity, not just state (round-2 RF-01)
       void (async () => {
         const loser =
           end.winner === undefined ? null : end.winner === "w" ? "b" : "w";
         if (loser) await sinkFlagshipFlourish(loser);
-        // The user may have hit Menu/Undo during the flourish — never
-        // resurrect a stale result over the new state (review P5-02).
-        if (controller.currentState() !== "gameOver") return;
+        // The user may have hit Menu/Undo — or reached a NEWER game over —
+        // during the flourish. Only the latest terminal event may mount.
+        if (controller.currentState() !== "gameOver" || myEnd !== endSeq) return;
         hud.showGameOver(
           end,
           () => controller.startGame(lastConfig),
@@ -96,6 +97,7 @@ const controller: GameController = new GameController(
 );
 
 let lastConfig: GameConfig = { aiColor: null };
+let endSeq = 0;
 hud.onStartGame = (config) => {
   lastConfig = config;
   controller.startGame(config);
