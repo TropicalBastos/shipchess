@@ -23,6 +23,7 @@ export class Hud {
   private readonly turnEl: HTMLDivElement;
   private readonly promoEl: HTMLDivElement;
   private readonly overEl: HTMLDivElement;
+  private escHandler!: (e: KeyboardEvent) => void;
   onPromotionPick: ((p: PromotionPiece) => void) | null = null;
   onPromotionCancel: (() => void) | null = null;
 
@@ -66,11 +67,12 @@ export class Hud {
     card.addEventListener("click", (e) => e.stopPropagation());
     this.promoEl.appendChild(card);
     this.promoEl.addEventListener("click", () => this.onPromotionCancel?.());
-    window.addEventListener("keydown", (e) => {
+    this.escHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && this.promoEl.style.display !== "none") {
         this.onPromotionCancel?.();
       }
-    });
+    };
+    window.addEventListener("keydown", this.escHandler);
     container.appendChild(this.promoEl);
 
     this.overEl = document.createElement("div");
@@ -79,6 +81,14 @@ export class Hud {
       "background:rgba(4,12,18,.5);z-index:30;flex-direction:column;gap:14px;" +
       "color:#f2f0e6;font:600 26px system-ui;text-align:center";
     container.appendChild(this.overEl);
+  }
+
+  /** Remove global listeners + DOM (needed once Phase 5 rebuilds the HUD). */
+  dispose(): void {
+    window.removeEventListener("keydown", this.escHandler);
+    this.turnEl.remove();
+    this.promoEl.remove();
+    this.overEl.remove();
   }
 
   setTurn(color: Color): void {

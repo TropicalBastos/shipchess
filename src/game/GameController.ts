@@ -126,7 +126,14 @@ export class GameController {
     this.deselect();
     this.state = "animating";
     const move = this.game.applyMove(from, to, promotion);
-    await this.animator.play(move);
+    try {
+      await this.animator.play(move);
+    } catch (err) {
+      // The rules position is authoritative and already advanced; a failed
+      // animation must never strand the game in `animating`. Log and proceed —
+      // the next sync repaints the fleet. (Phase 4 may refine this policy.)
+      console.error("animator.play failed; continuing with committed move", err);
+    }
     this.view.onCheck(move.checkedColor ?? null);
     if (move.end) {
       this.state = "gameOver";

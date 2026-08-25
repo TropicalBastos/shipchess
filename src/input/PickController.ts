@@ -16,6 +16,7 @@ export class PickController {
   private readonly hit = new THREE.Vector3();
   private readonly ndc = new THREE.Vector2();
   private down: { x: number; y: number } | null = null;
+  private maxMoved = 0;
 
   private readonly canvas: HTMLCanvasElement;
   private readonly camera: THREE.PerspectiveCamera;
@@ -32,10 +33,23 @@ export class PickController {
     canvas.style.touchAction = "none";
     canvas.addEventListener("pointerdown", (e) => {
       this.down = { x: e.clientX, y: e.clientY };
+      this.maxMoved = 0;
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!this.down) return;
+      // Track PEAK displacement: an orbit drag that returns to its origin
+      // must never read as a click (Phase 3 review W3-02).
+      this.maxMoved = Math.max(
+        this.maxMoved,
+        Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y),
+      );
     });
     canvas.addEventListener("pointerup", (e) => {
       if (!this.down) return;
-      const moved = Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y);
+      const moved = Math.max(
+        this.maxMoved,
+        Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y),
+      );
       this.down = null;
       if (moved > CLICK_SLOP_PX) return; // orbit drag, not a click
       this.onSquareClick(this.pick(e.clientX, e.clientY));

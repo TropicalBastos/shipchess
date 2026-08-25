@@ -65,11 +65,16 @@ export class ChessGame {
     return this.chess.get(square as Square) ?? null;
   }
 
-  /** Legal destination squares for the piece on `square`. */
+  /** Legal destination squares for the piece on `square`, deduplicated
+   * (promotions yield four verbose moves per destination). */
   legalDestinations(square: string): string[] {
-    return this.chess
-      .moves({ square: square as Square, verbose: true })
-      .map((m) => m.to);
+    return [
+      ...new Set(
+        this.chess
+          .moves({ square: square as Square, verbose: true })
+          .map((m) => m.to),
+      ),
+    ];
   }
 
   /** Does from→to require a promotion choice before it can be committed? */

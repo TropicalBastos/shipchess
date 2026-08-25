@@ -86,11 +86,35 @@ describe("ChessGame event mapping", () => {
     expect(g.endState()).toEqual({ kind: "threefold" });
   });
 
-  it("legalDestinations gates moves (no throw path in normal flow)", () => {
+  it("legalDestinations gates moves and deduplicates promotion squares", () => {
     const g = new ChessGame();
     expect(g.legalDestinations("e2").sort()).toEqual(["e3", "e4"]);
     expect(g.legalDestinations("e4")).toEqual([]); // empty square
-    expect(g.legalDestinations("e7")).not.toContain("e5x");
+    const promo = new ChessGame("4k3/1P6/8/8/8/8/8/4K3 w - - 0 1");
+    const dests = promo.legalDestinations("b7");
+    expect(dests).toEqual([...new Set(dests)]); // W3 review M3-08
+  });
+
+  it("fenAfter always equals the post-move position (teleport contract)", () => {
+    const g = new ChessGame("r3k2r/pppp1ppp/8/4p3/8/8/PPPPPPPP/R3K2R w KQkq - 0 1");
+    for (const [f, t] of [
+      ["e1", "g1"], // castle
+      ["e8", "c8"], // castle
+      ["e2", "e4"],
+      ["d7", "d5"],
+      ["e4", "d5"], // capture
+    ]) {
+      const m = g.applyMove(f, t);
+      expect(m.fenAfter).toBe(g.fen());
+    }
+    const promo = new ChessGame("rn2k3/1P6/8/8/8/8/8/4K3 w q - 0 1");
+    expect(promo.applyMove("b7", "a8", "q").fenAfter).toBe(promo.fen());
+  });
+
+  it("checkmate outranks fifty-move when both become true on one move", () => {
+    const g = new ChessGame("7k/8/5KQ1/8/8/8/8/8 w - - 99 80");
+    const m = g.applyMove("g6", "g7"); // Qg7#: mate AND halfmove clock 100
+    expect(m.end).toEqual({ kind: "checkmate", winner: "w" });
   });
 });
 
@@ -174,6 +198,58 @@ describe("GameController state machine", () => {
     await gc.clickSquare("b8");
     await gc.choosePromotion("n"); // underpromotion offered and honored
     expect(game.pieceAt("b8")).toEqual({ type: "n", color: "w" });
+  });
+
+  it("emits callbacks in the documented order: play → check → over/turn", async () => {
+    const log: string[] = [];
+    const view: GameView = {
+      onSelection: () => log.push("sel"),
+      onDenied: () => log.push("deny"),
+      onCheck: () => log.push("check"),
+      onTurn: () => log.push("turn"),
+      onPromotionPrompt: () => log.push("promo"),
+      onGameOver: () => log.push("over"),
+    };
+    const gc = new GameController(
+      new ChessGame(),
+      { play: async () => void log.push("anim") },
+      view,
+    );
+    log.length = 0;
+    await gc.clickSquare("e2");
+    await gc.clickSquare("e4");
+    expect(log).toEqual(["sel", "sel", "anim", "check", "turn"]);
+    // Mate ends with over (no turn) and check precedes it.
+    for (const [f, t] of [
+      ["e7", "e5"],
+      ["f1", "c4"],
+      ["b8", "c6"],
+      ["d1", "h5"],
+      ["g8", "f6"],
+      ["h5", "f7"],
+    ]) {
+      await gc.clickSquare(f);
+      await gc.clickSquare(t);
+    }
+    expect(log.slice(-3)).toEqual(["anim", "check", "over"]);
+  });
+
+  it("cancelled promotion is fully clean: prompt closed, deselected, stale choice ignored", async () => {
+    const { view, calls } = makeView();
+    const game = new ChessGame("4k3/1P5P/8/8/8/8/8/4K3 w - - 0 1");
+    const gc = new GameController(game, instantAnimator, view);
+    await gc.clickSquare("b7");
+    await gc.clickSquare("b8");
+    gc.cancelPromotion();
+    expect(calls.promo).toEqual([true, false]); // closed, not just hidden
+    expect(calls.selection.at(-1)).toEqual([null, []]); // deselected
+    await gc.choosePromotion("q"); // stale — must be ignored
+    expect(game.pieceAt("b8")).toBeNull();
+    // Another piece moves immediately after cancel.
+    await gc.clickSquare("h7");
+    await gc.clickSquare("h8");
+    await gc.choosePromotion("n");
+    expect(game.pieceAt("h8")).toEqual({ type: "n", color: "w" });
   });
 
   it("reaches gameOver on mate and rejects further input", async () => {
