@@ -30,9 +30,13 @@ export interface MoveAnimator {
   play(move: AppliedMove): Promise<void>;
 }
 
-/** Phase 6 implements this over Stockfish; Phase 5 ships a stub. */
+/** Implemented over Stockfish (Phase 6); difficulty flows with each request
+ * so the AI seam needs no side-channel configuration. */
 export interface AiPlayer {
-  requestMove(fen: string): Promise<{
+  requestMove(
+    fen: string,
+    difficulty?: Difficulty,
+  ): Promise<{
     from: string;
     to: string;
     promotion?: PromotionPiece;
@@ -289,7 +293,10 @@ export class GameController {
     this.state = "aiThinking";
     this.view.onAiThinking(true);
     try {
-      const reply = await this.ai.requestMove(this.game.fen());
+      const reply = await this.ai.requestMove(
+        this.game.fen(),
+        this.config.difficulty,
+      );
       // Stale replies (undo / new game / menu since the request) are dropped.
       if (generation !== this.aiGeneration || this.state !== "aiThinking") {
         return;
