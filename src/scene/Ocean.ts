@@ -55,8 +55,13 @@ void main() {
   vec3 view = normalize(cameraPosition - vWorldPos);
 
   // Depth tint: crest-lightened water color.
-  float lift = clamp(vHeight * 1.6 + 0.5, 0.0, 1.0);
+  float lift = clamp(vHeight * 1.8 + 0.5, 0.0, 1.0);
   vec3 water = mix(uDeepColor, uCrestColor, lift);
+
+  // Whitecap hint on only the steepest crests so the swell reads as form.
+  float steep = 1.0 - n.y;
+  float cap = smoothstep(0.24, 0.4, steep) * smoothstep(0.0, 0.12, vHeight);
+  water = mix(water, vec3(0.86, 0.93, 0.94), cap * 0.5);
 
   // Board mask from REST coordinates (1 inside the play area).
   float board = 1.0 - smoothstep(${BOARD_HALF.toFixed(1)}, ${(BOARD_HALF + 0.35).toFixed(2)}, max(abs(vRest.x), abs(vRest.y)));
@@ -75,10 +80,11 @@ void main() {
   fres = min(fres, 0.55) * (1.0 - 0.85 * board);
   water = mix(water, uSkyColor, fres);
 
-  // Sun specular, damped over the board.
+  // Sun specular: tight glints + a broad sheen, damped over the board.
   vec3 halfDir = normalize(uSunDir + view);
-  float spec = pow(max(dot(n, halfDir), 0.0), 90.0) * (1.0 - 0.9 * board);
-  water += vec3(1.0, 0.95, 0.85) * spec * 0.6;
+  float ndh = max(dot(n, halfDir), 0.0);
+  float spec = pow(ndh, 60.0) * 1.1 + pow(ndh, 8.0) * 0.08;
+  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - 0.9 * board);
 
   // Simple lambert so swells read as form.
   float diff = 0.75 + 0.25 * max(dot(n, uSunDir), 0.0);
@@ -102,11 +108,11 @@ export class Ocean {
     this.uniforms = {
       uTime: { value: 0 },
       uSunDir: { value: sunDir.clone().normalize() },
-      uDeepColor: { value: new THREE.Color("#0d3a4d") },
-      uCrestColor: { value: new THREE.Color("#2e7d92") },
-      uSkyColor: { value: new THREE.Color("#cfe0e8") },
-      uLightSquare: { value: new THREE.Color("#9fc4c9") },
-      uDarkSquare: { value: new THREE.Color("#39616e") },
+      uDeepColor: { value: new THREE.Color("#0a3450") },
+      uCrestColor: { value: new THREE.Color("#2b7d95") },
+      uSkyColor: { value: new THREE.Color("#e9ece4") },
+      uLightSquare: { value: new THREE.Color("#aac9c0") },
+      uDarkSquare: { value: new THREE.Color("#26505c") },
     };
 
     const mat = new THREE.ShaderMaterial({

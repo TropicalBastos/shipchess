@@ -28,7 +28,7 @@ export class SceneManager {
   readonly camera: THREE.PerspectiveCamera;
   readonly renderer: THREE.WebGLRenderer;
   readonly controls: OrbitControls;
-  readonly sunDir = new THREE.Vector3(0.55, 0.5, 0.35).normalize();
+  readonly sunDir = new THREE.Vector3(0.6, 0.34, 0.42).normalize();
   private readonly fpsEl: HTMLDivElement;
   private frames = 0;
   private fpsTimer = 0;
@@ -57,14 +57,14 @@ export class SceneManager {
     this.controls.enableDamping = true;
 
     // Sky dome + matching horizon fog.
-    const horizon = new THREE.Color("#cfe0e8");
+    const horizon = new THREE.Color("#e5e9df");
     const sky = new THREE.Mesh(
       new THREE.SphereGeometry(300, 24, 16),
       new THREE.ShaderMaterial({
         vertexShader: SKY_VERT,
         fragmentShader: SKY_FRAG,
         uniforms: {
-          uZenith: { value: new THREE.Color("#3a7ca8") },
+          uZenith: { value: new THREE.Color("#2a6390") },
           uHorizon: { value: horizon },
         },
         side: THREE.BackSide,
