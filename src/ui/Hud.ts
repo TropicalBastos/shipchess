@@ -114,7 +114,9 @@ const MENU_CSS = /* css */ `
 .scm-toggle input[type="checkbox"] { accent-color: #d9b45c; width: 15px; height: 15px; }
 .scm-settings {
   display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
-  justify-content: center; max-width: 460px; padding: 4px 0;
+  justify-content: center; max-width: 460px; padding: 14px 18px;
+  background: rgba(8,20,28,.78); border: 1px solid #33566a;
+  border-radius: 14px; backdrop-filter: blur(3px);
 }
 .scm-light { width: 330px; background: rgba(8,20,28,.75); border-radius: 9px; }
 .scm-tod { display: flex; flex-direction: column; gap: 6px; align-items: center; }
