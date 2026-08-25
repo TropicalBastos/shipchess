@@ -48,6 +48,8 @@ function paintPreset(p: ReturnType<typeof lerpPreset>): void {
   sm.applyPreset(p);
   ocean.setSunDir(sm.sunDir);
   ocean.setPalette(...oceanPaletteArgs(p));
+  // Board light pool tracks the spotlight: subtle by day, strong at night.
+  ocean.setBoardLight(0.15 + Math.max(0, 2.2 - p.sunIntensity) * 0.5);
 }
 /** Smoothly cross-fade the whole lighting rig to a new time of day. */
 function applySunPreset(name: keyof typeof SUN_PRESETS): void {

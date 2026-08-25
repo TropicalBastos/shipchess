@@ -118,6 +118,7 @@ export class SceneManager {
   readonly controls: OrbitControls;
   readonly sunDir = new THREE.Vector3(0.6, 0.34, 0.42).normalize();
   private sun!: THREE.DirectionalLight;
+  private spot!: THREE.SpotLight;
   private ambientLight!: THREE.AmbientLight;
   private skyMat!: THREE.ShaderMaterial;
   private readonly fpsEl: HTMLDivElement;
@@ -175,7 +176,14 @@ export class SceneManager {
     this.sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
     this.sun.position.copy(this.sunDir).multiplyScalar(100);
     this.ambientLight = new THREE.AmbientLight(0xbfd4de, 0.9);
-    this.scene.add(this.sun, this.ambientLight);
+    // Overhead spotlight pooled on the board (visibility): lifts every piece
+    // out of the water's tones; intensity grows as the sun dims. The ocean
+    // shader ignores scene lights, so Ocean.setBoardLight paints the matching
+    // pool on the squares.
+    this.spot = new THREE.SpotLight(0xfff2dd, 1.2, 0, 0.34, 0.55, 0);
+    this.spot.position.set(5, 24, 6);
+    this.spot.target.position.set(0, 0, 0);
+    this.scene.add(this.sun, this.spot, this.spot.target, this.ambientLight);
 
     this.fpsEl = document.createElement("div");
     this.fpsEl.style.cssText =
@@ -244,6 +252,7 @@ export class SceneManager {
     this.sun.intensity = p.sunIntensity;
     this.ambientLight.color.set(p.ambient);
     this.ambientLight.intensity = p.ambientIntensity;
+    this.spot.intensity = 1.0 + Math.max(0, 2.2 - p.sunIntensity) * 1.1;
     const u = this.skyMat.uniforms;
     (u.uZenith.value as THREE.Color).set(p.zenith);
     (u.uHorizon.value as THREE.Color).set(p.horizon);

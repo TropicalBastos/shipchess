@@ -47,6 +47,7 @@ uniform vec3 uDarkSquare;
 uniform vec3 uFogColor;
 uniform float uFogNear;
 uniform float uFogFar;
+uniform float uBoardLight;
 varying vec2 vRest;
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -75,6 +76,10 @@ void main() {
   // +1.0 so a1 (cell 0,7) is a DARK square, per chess law (review W2-03).
   float checker = mod(cell.x + cell.y + 1.0, 2.0);
   vec3 squares = mix(uDarkSquare, uLightSquare, checker);
+  // The overhead spotlight's pool on the water (scene lights don't reach
+  // this shader): a soft radial lift, brightest at board center.
+  float pool = 1.0 - smoothstep(2.5, ${(BOARD_HALF + 1.2).toFixed(1)}, length(vRest));
+  squares *= 1.0 + uBoardLight * (0.25 + 0.5 * pool);
   vec2 g = abs(fract(vRest + 0.5) - 0.5);
   float line = 1.0 - smoothstep(0.015, 0.05, min(g.x, g.y));
   squares = mix(squares, squares * 0.55, line);
@@ -142,6 +147,7 @@ export class Ocean {
       uFogColor: { value: new THREE.Color("#e5e9df") },
       uFogNear: { value: 70 },
       uFogFar: { value: 340 },
+      uBoardLight: { value: 0.15 },
     };
 
     const mat = new THREE.ShaderMaterial({
@@ -157,6 +163,11 @@ export class Ocean {
   /** t must be WaveField.wrapTime(elapsed) — the shared float32 time value. */
   setTime(t: number): void {
     this.uniforms.uTime.value = t;
+  }
+
+  /** Spotlight pool brightness on the board (matches SceneManager's spot). */
+  setBoardLight(v: number): void {
+    this.uniforms.uBoardLight.value = v;
   }
 
   /** Sun-preset support (Phase 7). */
