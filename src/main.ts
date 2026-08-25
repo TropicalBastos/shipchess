@@ -332,7 +332,7 @@ function frame(now: number): void {
     requestAnimationFrame(frame);
     return; // world time freezes with the canvas — nothing advances unseen
   }
-  document.getElementById("splash")?.remove(); // first healthy frame (P8-01)
+
   elapsedRef.value += dt;
   const t = wrapTime(elapsedRef.value);
   ocean.setTime(t);
@@ -354,3 +354,4 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+document.getElementById("splash")?.remove(); // setup complete (P8-01)
