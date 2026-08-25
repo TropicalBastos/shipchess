@@ -60,7 +60,7 @@ float fbm(vec2 p) {
 void main() {
   vec3 d = normalize(vDir);
   float h = clamp(d.y, 0.0, 1.0);
-  vec3 col = mix(uHorizon, uZenith, smoothstep(0.0, 0.16, h));
+  vec3 col = mix(uHorizon, uZenith, smoothstep(0.0, 0.3, h));
 
   // Slow whole-sky drift; the sun stays fixed (it drives the scene light).
   float ang = uTime * ${ROT};
@@ -156,7 +156,7 @@ export class SceneManager {
       vertexShader: SKY_VERT,
       fragmentShader: SKY_FRAG,
       uniforms: {
-        uZenith: { value: new THREE.Color("#1c4e7e") },
+        uZenith: { value: new THREE.Color("#3d85c6") },
         uHorizon: { value: horizon },
         uSunDir: { value: this.sunDir.clone() },
         uSunColor: { value: new THREE.Color("#fff4e0") },
