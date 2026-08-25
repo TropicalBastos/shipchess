@@ -38,13 +38,16 @@ fleet.syncTo(START_FEN);
 // ---- Game wiring (Phase 5: full loop — menu, undo, resign/draw, rematch)
 const settings = bootSettings;
 const audio = new AudioManager(settings.volume);
-window.addEventListener("pointerdown", () => audio.unlock(), { once: true });
+// Unlock on ANY gesture kind, repeatedly (resume covers suspended contexts,
+// keyboard-only players included — P7-03).
+window.addEventListener("pointerdown", () => audio.unlock());
+window.addEventListener("keydown", () => audio.unlock());
 
 function applySunPreset(name: keyof typeof SUN_PRESETS): void {
   const p = SUN_PRESETS[name] ?? SUN_PRESETS.day;
   sm.applyPreset(p);
   ocean.setSunDir(sm.sunDir);
-  ocean.setPalette(p.deep, p.crest, p.skyTint);
+  ocean.setPalette(p.deep, p.crest, p.skyTint, p.horizon);
 }
 applySunPreset(settings.sunPreset);
 const highlights = new Highlights(sm.scene);
@@ -120,7 +123,8 @@ const controller: GameController = new GameController(
     },
     onTurn: (color) => {
       hud.setTurn(color);
-      if (!settings.cameraGlide) return;
+      // Reduced motion means no 1.1s camera sweeps either (P7-02).
+      if (!settings.cameraGlide || settings.reducedMotion) return;
       // Hotseat: swing to the mover. AI game: hold the human's side.
       const humanSide =
         lastConfig.aiColor === null

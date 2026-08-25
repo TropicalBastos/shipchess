@@ -44,6 +44,7 @@ const MENU_CSS = /* css */ `
   position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 14px; color: #f2f0e6;
   font: 14px ${FONT_UI}; text-align: center;
+  overflow-y: auto; padding: 24px 0 44px; /* short viewports scroll (P7-06) */
 }
 .scm-title {
   font: 400 clamp(44px, 7vw, 68px) "Saira Stencil One", ${FONT_UI};
@@ -378,6 +379,7 @@ export class Hud {
       <div class="scm-settings">
         <label class="scm-toggle"><input type="checkbox" data-fast /><span>Fast animations</span></label>
         <label class="scm-toggle"><input type="checkbox" data-reduced /><span>Reduced motion</span></label>
+        <label class="scm-toggle"><input type="checkbox" data-glide /><span>Camera glide</span></label>
         <label class="scm-toggle"><input type="checkbox" data-lowq /><span>Low quality (reload)</span></label>
         <label class="scm-toggle">
           <span>Volume</span>
@@ -442,6 +444,12 @@ export class Hud {
     fastCb.checked = settings.fastAnimations;
     fastCb.addEventListener("change", () => {
       settings.fastAnimations = fastCb.checked;
+      this.onSettingsChange?.(settings);
+    });
+    const glideCb = q<HTMLInputElement>("[data-glide]");
+    glideCb.checked = settings.cameraGlide;
+    glideCb.addEventListener("change", () => {
+      settings.cameraGlide = glideCb.checked;
       this.onSettingsChange?.(settings);
     });
     const reducedCb = q<HTMLInputElement>("[data-reduced]");

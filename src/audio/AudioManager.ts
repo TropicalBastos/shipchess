@@ -16,17 +16,23 @@ export class AudioManager {
     this.volume = volume;
   }
 
-  /** Call on the first user gesture; idempotent. */
+  /** Call on user gestures; idempotent, and resumes a suspended context
+   * (Chrome may create contexts 'suspended' even post-gesture — P7-03). */
   unlock(): void {
-    if (this.ctx || typeof AudioContext === "undefined") return;
+    if (typeof AudioContext === "undefined") return;
+    if (this.ctx) {
+      if (this.ctx.state === "suspended") void this.ctx.resume();
+      return;
+    }
     try {
       this.ctx = new AudioContext();
       this.master = this.ctx.createGain();
       this.master.gain.value = this.volume;
       this.master.connect(this.ctx.destination);
+      if (this.ctx.state === "suspended") void this.ctx.resume();
       this.startAmbient();
     } catch {
-      this.ctx = null;
+      this.ctx = null; // next gesture retries
     }
   }
 
@@ -36,7 +42,7 @@ export class AudioManager {
   }
 
   get unlocked(): boolean {
-    return this.ctx !== null;
+    return this.ctx !== null && this.ctx.state === "running";
   }
 
   private noiseBuffer(seconds: number): AudioBuffer {

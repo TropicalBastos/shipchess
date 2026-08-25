@@ -47,20 +47,30 @@ describe("Phase 7: sun presets", () => {
 
   it("ocean palette setters apply preset colors", () => {
     const o = new Ocean(new THREE.Vector3(0, 1, 0), 0.5);
-    o.setPalette("#112233", "#445566", "#778899");
+    o.setPalette("#112233", "#445566", "#778899", "#aabbcc");
     const u = (o.mesh.material as THREE.ShaderMaterial).uniforms;
     expect((u.uDeepColor.value as THREE.Color).getHexString()).toBe("112233");
-    expect((u.uFogColor.value as THREE.Color).getHexString()).toBe("778899");
+    // Fog is the HORIZON color, decoupled from the fresnel sky tint (P7-04).
+    expect((u.uFogColor.value as THREE.Color).getHexString()).toBe("aabbcc");
   });
 });
 
 describe("Phase 7: reduced-motion path completes a full scripted game", () => {
-  it("scholar's mate runs to checkmate with instant moves (reduced motion)", async () => {
+  it("scholar's mate runs to checkmate with reduced motion + low quality together", async () => {
+    // The combined acceptance path (P7-05): reduced-motion comes from a
+    // STORED settings blob, and the low-quality ocean coexists in-scene.
+    localStorage.setItem(
+      "shipchess.settings",
+      JSON.stringify({ version: 1, reducedMotion: true, quality: "low" }),
+    );
+    const stored = loadSettings();
+    expect(stored.reducedMotion).toBe(true);
     const scene = new THREE.Scene();
+    scene.add(new Ocean(new THREE.Vector3(0, 1, 0), stored.quality === "low" ? 0.5 : 1).mesh);
     const fleet = new Fleet(scene);
     const game = new ChessGame();
     const animator = new Animator();
-    animator.instantMode = true; // reduced-motion degradation
+    animator.instantMode = stored.reducedMotion; // the main-wiring mapping
     const sa = new ShipAnimator(fleet, animator, new Effects(scene, animator), () => 0);
     let over = false;
     const gc = new GameController(game, sa, {

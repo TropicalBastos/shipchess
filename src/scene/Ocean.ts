@@ -148,10 +148,12 @@ export class Ocean {
     (this.uniforms.uSunDir.value as THREE.Vector3).copy(dir).normalize();
   }
 
-  setPalette(deep: string, crest: string, skyTint: string): void {
+  setPalette(deep: string, crest: string, skyTint: string, fog: string): void {
     (this.uniforms.uDeepColor.value as THREE.Color).set(deep);
     (this.uniforms.uCrestColor.value as THREE.Color).set(crest);
     (this.uniforms.uSkyColor.value as THREE.Color).set(skyTint);
-    (this.uniforms.uFogColor.value as THREE.Color).set(skyTint);
+    // Fog matches the HORIZON, not the fresnel sky tint (P7-04 — moonlit's
+    // bright tint made the far sea fade pale against a dark horizon).
+    (this.uniforms.uFogColor.value as THREE.Color).set(fog);
   }
 }
