@@ -19,7 +19,7 @@ export const BOARD_HALF = 4.0;
  * the board) sit in mostly-calm water. */
 export const CALM_FALLOFF = 2.5;
 /** Fractional amplitude reduction inside the board (calm lagoon). */
-export const CALM_DAMPING = 0.92;
+export const CALM_DAMPING = 0.96;
 
 export interface WaveSpec {
   dirX: number;
@@ -30,16 +30,16 @@ export interface WaveSpec {
 
 /** One long swell + three chop terms. Directions are normalized in derivation. */
 export const RAW_WAVES: WaveSpec[] = [
-  { dirX: 1.0, dirZ: 0.25, amplitude: 0.09, wavelength: 14.0 },
-  { dirX: 0.7, dirZ: -0.6, amplitude: 0.028, wavelength: 5.3 },
-  { dirX: -0.3, dirZ: 0.85, amplitude: 0.018, wavelength: 3.1 },
-  { dirX: 0.55, dirZ: 0.75, amplitude: 0.01, wavelength: 2.1 },
+  { dirX: 1.0, dirZ: 0.25, amplitude: 0.055, wavelength: 14.0 },
+  { dirX: 0.7, dirZ: -0.6, amplitude: 0.018, wavelength: 5.3 },
+  { dirX: -0.3, dirZ: 0.85, amplitude: 0.011, wavelength: 3.1 },
+  { dirX: 0.55, dirZ: 0.75, amplitude: 0.006, wavelength: 2.1 },
 ];
 
 /** Total steepness ΣQᵢAᵢkᵢ. MUST stay ≤ 1 or the surface self-intersects.
  * Kept well below the cap: high steepness also means strong horizontal
  * advection, which read as ships surging around like toys. */
-export const STEEPNESS = 0.45;
+export const STEEPNESS = 0.32;
 
 export interface Wave {
   dirX: number;
@@ -77,7 +77,7 @@ export const WAVES: Wave[] = RAW_WAVES.map((w) => {
 export const SHORTEST_WAVELENGTH = Math.min(
   ...RAW_WAVES.map((w) => w.wavelength),
 );
-export const MIN_VERTS_PER_WAVELENGTH = 8;
+export const MIN_VERTS_PER_WAVELENGTH = 16;
 
 // Render-scale config values (quality knobs from day one — see plan risk table).
 export const OCEAN_SIZE = 90;

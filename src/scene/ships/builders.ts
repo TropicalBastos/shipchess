@@ -22,12 +22,12 @@ export interface ShipSpec {
 }
 
 export const SHIP_SPECS: Record<PieceType, ShipSpec> = {
-  p: { length: 0.42, beam: 0.16, maxTilt: (4 * Math.PI) / 180, bobScale: 1.0 },
-  n: { length: 0.6, beam: 0.14, maxTilt: (3.5 * Math.PI) / 180, bobScale: 0.9 },
-  b: { length: 0.68, beam: 0.18, maxTilt: (3 * Math.PI) / 180, bobScale: 0.8 },
-  r: { length: 0.72, beam: 0.28, maxTilt: (2 * Math.PI) / 180, bobScale: 0.6 },
-  q: { length: 0.78, beam: 0.34, maxTilt: (1.5 * Math.PI) / 180, bobScale: 0.5 },
-  k: { length: 0.7, beam: 0.24, maxTilt: (2 * Math.PI) / 180, bobScale: 0.7 },
+  p: { length: 0.42, beam: 0.16, maxTilt: (2 * Math.PI) / 180, bobScale: 1.0 },
+  n: { length: 0.6, beam: 0.14, maxTilt: (1.8 * Math.PI) / 180, bobScale: 0.9 },
+  b: { length: 0.68, beam: 0.18, maxTilt: (1.5 * Math.PI) / 180, bobScale: 0.8 },
+  r: { length: 0.72, beam: 0.28, maxTilt: (1 * Math.PI) / 180, bobScale: 0.6 },
+  q: { length: 0.78, beam: 0.34, maxTilt: (0.8 * Math.PI) / 180, bobScale: 0.5 },
+  k: { length: 0.7, beam: 0.24, maxTilt: (1 * Math.PI) / 180, bobScale: 0.7 },
 };
 
 function patrolBoat(m: FleetMaterials): THREE.Group {
