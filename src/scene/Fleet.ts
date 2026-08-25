@@ -70,10 +70,13 @@ let shadowMaterial: THREE.MeshBasicMaterial | null = null;
 function getShadowMaterial(): THREE.MeshBasicMaterial {
   if (!shadowMaterial) {
     let map: THREE.CanvasTexture | null = null;
-    if (typeof document !== "undefined") {
-      const c = document.createElement("canvas");
+    const ctx =
+      typeof document !== "undefined"
+        ? document.createElement("canvas").getContext("2d")
+        : null;
+    if (ctx) {
+      const c = ctx.canvas;
       c.width = c.height = 64;
-      const ctx = c.getContext("2d")!;
       const grad = ctx.createRadialGradient(32, 32, 4, 32, 32, 30);
       grad.addColorStop(0, "rgba(6,20,28,0.4)");
       grad.addColorStop(1, "rgba(6,20,28,0)");

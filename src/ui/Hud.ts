@@ -104,7 +104,12 @@ const MENU_CSS = /* css */ `
   display: flex; gap: 8px; align-items: center; color: #cfe0e8; cursor: pointer;
   font: 13px ${FONT_UI}; text-shadow: 0 1px 6px rgba(4,12,18,.8);
 }
-.scm-toggle input { accent-color: #d9b45c; width: 15px; height: 15px; }
+.scm-toggle input[type="checkbox"] { accent-color: #d9b45c; width: 15px; height: 15px; }
+.scm-settings {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+  justify-content: center; max-width: 460px; padding: 4px 0;
+}
+.scm-light { width: 240px; }
 .scm-foot {
   position: fixed; bottom: 14px; left: 0; right: 0; text-align: center;
   font: 12px ${FONT_UI}; letter-spacing: .1em; color: rgba(207,224,232,.55);
@@ -370,9 +375,20 @@ export class Hud {
         <div class="scm-hint" data-rankhint>Learning the ropes — expect blunders</div>
         <button class="scm-cta">Set sail</button>
       </div>
-      <label class="scm-toggle">
-        <input type="checkbox" data-fast /><span>Fast animations</span>
-      </label>
+      <div class="scm-settings">
+        <label class="scm-toggle"><input type="checkbox" data-fast /><span>Fast animations</span></label>
+        <label class="scm-toggle"><input type="checkbox" data-reduced /><span>Reduced motion</span></label>
+        <label class="scm-toggle"><input type="checkbox" data-lowq /><span>Low quality (reload)</span></label>
+        <label class="scm-toggle">
+          <span>Volume</span>
+          <input type="range" min="0" max="1" step="0.05" data-volume style="accent-color:#d9b45c;width:90px" />
+        </label>
+        <div class="scm-seg scm-light" data-group="sun">
+          <button class="scm-seg-btn sel" data-v="day">Day</button>
+          <button class="scm-seg-btn" data-v="golden">Golden</button>
+          <button class="scm-seg-btn" data-v="moonlit">Moonlit</button>
+        </div>
+      </div>
       <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move</div>
     `;
     container.appendChild(this.menuEl);
@@ -426,6 +442,34 @@ export class Hud {
     fastCb.checked = settings.fastAnimations;
     fastCb.addEventListener("change", () => {
       settings.fastAnimations = fastCb.checked;
+      this.onSettingsChange?.(settings);
+    });
+    const reducedCb = q<HTMLInputElement>("[data-reduced]");
+    reducedCb.checked = settings.reducedMotion;
+    reducedCb.addEventListener("change", () => {
+      settings.reducedMotion = reducedCb.checked;
+      this.onSettingsChange?.(settings);
+    });
+    const lowqCb = q<HTMLInputElement>("[data-lowq]");
+    lowqCb.checked = settings.quality === "low";
+    lowqCb.addEventListener("change", () => {
+      settings.quality = lowqCb.checked ? "low" : "high";
+      this.onSettingsChange?.(settings);
+    });
+    const vol = q<HTMLInputElement>("[data-volume]");
+    vol.value = String(settings.volume);
+    vol.addEventListener("input", () => {
+      settings.volume = Number(vol.value);
+      this.onSettingsChange?.(settings);
+    });
+    const sunSeg = this.menuEl.querySelector<HTMLElement>('[data-group="sun"]')!;
+    for (const b of sunSeg.querySelectorAll<HTMLElement>(".scm-seg-btn")) {
+      b.classList.toggle("sel", b.dataset.v === settings.sunPreset);
+    }
+    sunSeg.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>(".scm-seg-btn");
+      if (!btn) return;
+      settings.sunPreset = (btn.dataset.v ?? "day") as Settings["sunPreset"];
       this.onSettingsChange?.(settings);
     });
   }

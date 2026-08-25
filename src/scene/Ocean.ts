@@ -107,13 +107,12 @@ export class Ocean {
   readonly mesh: THREE.Mesh;
   private readonly uniforms: { [k: string]: THREE.IUniform };
 
-  constructor(sunDir: THREE.Vector3) {
-    const geo = new THREE.PlaneGeometry(
-      OCEAN_SIZE,
-      OCEAN_SIZE,
-      OCEAN_SEGMENTS,
-      OCEAN_SEGMENTS,
-    );
+  constructor(sunDir: THREE.Vector3, segmentsScale = 1) {
+    // Quality tier: low halves the mesh density (config value per the plan's
+    // risk table; ≥8 verts/shortest-wavelength holds at scale 1, low trades
+    // fidelity knowingly).
+    const segs = Math.max(32, Math.round(OCEAN_SEGMENTS * segmentsScale));
+    const geo = new THREE.PlaneGeometry(OCEAN_SIZE, OCEAN_SIZE, segs, segs);
     geo.rotateX(-Math.PI / 2); // position attribute now spans XZ, y = 0
 
     this.uniforms = {
@@ -142,5 +141,17 @@ export class Ocean {
   /** t must be WaveField.wrapTime(elapsed) — the shared float32 time value. */
   setTime(t: number): void {
     this.uniforms.uTime.value = t;
+  }
+
+  /** Sun-preset support (Phase 7). */
+  setSunDir(dir: THREE.Vector3): void {
+    (this.uniforms.uSunDir.value as THREE.Vector3).copy(dir).normalize();
+  }
+
+  setPalette(deep: string, crest: string, skyTint: string): void {
+    (this.uniforms.uDeepColor.value as THREE.Color).set(deep);
+    (this.uniforms.uCrestColor.value as THREE.Color).set(crest);
+    (this.uniforms.uSkyColor.value as THREE.Color).set(skyTint);
+    (this.uniforms.uFogColor.value as THREE.Color).set(skyTint);
   }
 }
