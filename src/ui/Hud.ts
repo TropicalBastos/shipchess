@@ -447,6 +447,28 @@ export class Hud {
     }
   }
 
+  private toastEl: HTMLDivElement | null = null;
+  private toastTimer = 0;
+
+  /** Transient notice (engine loading / degraded strength). */
+  toast(text: string, ms = 4000): void {
+    if (!this.toastEl) {
+      this.toastEl = document.createElement("div");
+      this.toastEl.style.cssText =
+        "position:fixed;bottom:18px;left:50%;transform:translateX(-50%);" +
+        "background:rgba(8,20,28,.9);border:1px solid #d9b45c;color:#e9ece4;" +
+        'padding:8px 16px;border-radius:10px;font:600 13px "Saira",system-ui;' +
+        "z-index:40";
+      document.body.appendChild(this.toastEl);
+    }
+    this.toastEl.textContent = text;
+    this.toastEl.style.display = "block";
+    clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => {
+      if (this.toastEl) this.toastEl.style.display = "none";
+    }, ms);
+  }
+
   showPause(active: boolean): void {
     for (const reset of this.confirmResets) reset();
     this.pauseEl.style.display = active ? "flex" : "none";

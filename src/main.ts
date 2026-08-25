@@ -3,7 +3,12 @@ import { Animator } from "./animation/Animator";
 import { ChessGame } from "./game/ChessGame";
 import { GameController } from "./game/GameController";
 import type { GameConfig } from "./game/GameController";
-import { StubAiPlayer } from "./game/ai/AiPlayer";
+import type { AiPlayer } from "./game/GameController";
+import {
+  MaterialAiPlayer,
+  StockfishAiPlayer,
+  workerTransport,
+} from "./game/ai/StockfishAiPlayer";
 import { PickController } from "./input/PickController";
 import type { PieceType } from "./scene/ships/builders";
 import { loadSettings, saveSettings } from "./ui/settings";
@@ -52,6 +57,27 @@ async function sinkFlagshipFlourish(loser: "w" | "b"): Promise<void> {
   await animator.tween(1.1, (v) => handle.setSink(v * 0.9));
 }
 
+// ---- The admiral: lazy Stockfish behind a facade; MaterialAiPlayer fallback
+// (visibly reduced-strength) if the engine cannot load.
+const ENGINE_URL = "/engine/stockfish-18-lite-single.js";
+let engine: StockfishAiPlayer | null = null;
+let fallback: MaterialAiPlayer | null = null;
+const aiFacade: AiPlayer = {
+  async requestMove(fen, difficulty) {
+    if (fallback) return fallback.requestMove(fen);
+    try {
+      engine ??= new StockfishAiPlayer(workerTransport(ENGINE_URL));
+      engine.difficulty = difficulty ?? "cadet";
+      return await engine.requestMove(fen);
+    } catch (err) {
+      console.error("Stockfish unavailable — degrading to material AI", err);
+      hud.toast("Engine unavailable — playing at reduced strength");
+      fallback = new MaterialAiPlayer();
+      return fallback.requestMove(fen);
+    }
+  },
+};
+
 const controller: GameController = new GameController(
   game,
   shipAnimator,
@@ -61,7 +87,15 @@ const controller: GameController = new GameController(
     onCheck: (color) => fleet.setCheck(color),
     onTurn: (color) => {
       hud.setTurn(color);
-      if (settings.cameraGlide) sm.glideToSide(color);
+      if (!settings.cameraGlide) return;
+      // Hotseat: swing to the mover. AI game: hold the human's side.
+      const humanSide =
+        lastConfig.aiColor === null
+          ? color
+          : lastConfig.aiColor === "w"
+            ? "b"
+            : "w";
+      sm.glideToSide(humanSide);
     },
     onPromotionPrompt: (active) => hud.showPromotion(active),
     onGameOver: (end) => {
@@ -93,13 +127,26 @@ const controller: GameController = new GameController(
     },
     onAiThinking: (active) => hud.setThinking(active),
   },
-  new StubAiPlayer(),
+  aiFacade,
 );
 
 let lastConfig: GameConfig = { aiColor: null };
 let endSeq = 0;
 hud.onStartGame = (config) => {
   lastConfig = config;
+  if (config.aiColor && config.difficulty) {
+    if (!fallback) {
+      engine ??= new StockfishAiPlayer(workerTransport(ENGINE_URL));
+      hud.toast("The admiral is boarding…", 1500);
+      engine
+        .ensureReady()
+        .then(() => engine?.newGame())
+        .catch(() => {
+          hud.toast("Engine unavailable — playing at reduced strength");
+          fallback = new MaterialAiPlayer();
+        });
+    }
+  }
   controller.startGame(config);
 };
 hud.onUndo = () => controller.undo();
