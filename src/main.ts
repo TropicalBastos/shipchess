@@ -12,6 +12,8 @@ import {
 import { PickController } from "./input/PickController";
 import type { PieceType } from "./scene/ships/builders";
 import { loadSettings, saveSettings } from "./ui/settings";
+import { AudioManager } from "./audio/AudioManager";
+import { SUN_PRESETS, lerpPreset, oceanPaletteArgs } from "./scene/presets";
 import { ShipAnimator } from "./scene/ShipAnimator";
 import { Effects } from "./scene/effects/sprites";
 import { Fleet } from "./scene/Fleet";
@@ -26,14 +28,36 @@ import "./style.css";
 
 const app = document.getElementById("app")!;
 const sm = new SceneManager(app);
-const ocean = new Ocean(sm.sunDir);
+const bootSettings = loadSettings();
+const ocean = new Ocean(sm.sunDir, bootSettings.quality === "low" ? 0.5 : 1);
 sm.scene.add(ocean.mesh);
 
 const fleet = new Fleet(sm.scene);
 fleet.syncTo(START_FEN);
 
 // ---- Game wiring (Phase 5: full loop — menu, undo, resign/draw, rematch)
-const settings = loadSettings();
+const settings = bootSettings;
+const audio = new AudioManager(settings.volume);
+// Unlock on ANY gesture kind, repeatedly (resume covers suspended contexts,
+// keyboard-only players included — P7-03).
+window.addEventListener("pointerdown", () => audio.unlock());
+window.addEventListener("keydown", () => audio.unlock());
+
+let activePreset = SUN_PRESETS[settings.sunPreset] ?? SUN_PRESETS.day;
+function paintPreset(p: ReturnType<typeof lerpPreset>): void {
+  sm.applyPreset(p);
+  ocean.setSunDir(sm.sunDir);
+  ocean.setPalette(...oceanPaletteArgs(p));
+}
+/** Smoothly cross-fade the whole lighting rig to a new time of day. */
+function applySunPreset(name: keyof typeof SUN_PRESETS): void {
+  const target = SUN_PRESETS[name] ?? SUN_PRESETS.day;
+  if (target === activePreset) return;
+  const from = activePreset;
+  activePreset = target;
+  void animator.tween(1.2, (v) => paintPreset(lerpPreset(from, target, v)));
+}
+paintPreset(activePreset);
 const highlights = new Highlights(sm.scene);
 const hud = new Hud(app, settings);
 const game = new ChessGame();
@@ -41,10 +65,10 @@ const animator = new Animator();
 // Hidden tabs get no animation frames: switch to instant (teleport) moves and
 // flush anything in flight, so a mid-move tab switch never dangles the game.
 document.addEventListener("visibilitychange", () => {
-  animator.instantMode = document.hidden;
+  animator.instantMode = document.hidden || settings.reducedMotion;
   if (document.hidden) animator.fastForward();
 });
-animator.instantMode = document.hidden;
+animator.instantMode = document.hidden || settings.reducedMotion;
 const effects = new Effects(sm.scene, animator);
 const shipAnimator = new ShipAnimator(fleet, animator, effects, () =>
   wrapTime(elapsedRef.value),
@@ -78,16 +102,37 @@ const aiFacade: AiPlayer = {
   },
 };
 
+const soundedAnimator = {
+  play: (move: Parameters<typeof shipAnimator.play>[0]) => {
+    if (move.capturedSquare) {
+      audio.cannon();
+      setTimeout(() => audio.sink(), 350);
+    } else if (move.piece === "n") {
+      audio.sonar();
+    } else {
+      audio.whoosh();
+    }
+    return shipAnimator.play(move);
+  },
+};
+
 const controller: GameController = new GameController(
   game,
-  shipAnimator,
+  soundedAnimator,
   {
-    onSelection: (sq, legal) => highlights.setSelection(sq, legal),
+    onSelection: (sq, legal) => {
+      if (sq) audio.creak();
+      highlights.setSelection(sq, legal);
+    },
     onDenied: (sq) => highlights.flashDenial(sq),
-    onCheck: (color) => fleet.setCheck(color),
+    onCheck: (color) => {
+      fleet.setCheck(color);
+      if (color) audio.alarm();
+    },
     onTurn: (color) => {
       hud.setTurn(color);
-      if (!settings.cameraGlide) return;
+      // Reduced motion means no 1.1s camera sweeps either (P7-02).
+      if (!settings.cameraGlide || settings.reducedMotion) return;
       // Hotseat: swing to the mover. AI game: hold the human's side.
       const humanSide =
         lastConfig.aiColor === null
@@ -161,7 +206,13 @@ hud.onUndo = () => controller.undo();
 hud.onResign = () => controller.resign();
 hud.onOfferDraw = () => controller.agreeDraw();
 hud.onMenu = () => controller.toMenu();
-hud.onSettingsChange = (s) => saveSettings(s);
+hud.onSettingsChange = (s) => {
+  saveSettings(s);
+  audio.setVolume(s.volume);
+  applySunPreset(s.sunPreset);
+  animator.instantMode = document.hidden || s.reducedMotion;
+  if (s.reducedMotion || !s.cameraGlide) sm.cancelGlide(); // RF-02
+};
 
 // Debug handle (harmless in production; invaluable under automation).
 (window as unknown as Record<string, unknown>).__shipchess = {

@@ -11,12 +11,15 @@ import { displace } from "../WaveField";
 let texture: THREE.CanvasTexture | null | undefined;
 function getTexture(): THREE.CanvasTexture | null {
   if (texture === undefined) {
-    if (typeof document === "undefined") {
+    const ctx =
+      typeof document !== "undefined"
+        ? document.createElement("canvas").getContext("2d")
+        : null;
+    if (!ctx) {
       texture = null;
     } else {
-      const c = document.createElement("canvas");
+      const c = ctx.canvas;
       c.width = c.height = 64;
-      const ctx = c.getContext("2d")!;
       const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
       g.addColorStop(0, "rgba(255,255,255,0.95)");
       g.addColorStop(0.6, "rgba(230,244,246,0.5)");

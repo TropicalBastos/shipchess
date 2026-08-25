@@ -8,7 +8,10 @@ export interface Settings {
   version: 1;
   fastAnimations: boolean;
   cameraGlide: boolean;
-  volume: number; // reserved for Phase 7
+  volume: number;
+  quality: "high" | "low";
+  reducedMotion: boolean;
+  sunPreset: "day" | "golden" | "moonlit";
 }
 
 const DEFAULTS: Settings = {
@@ -16,6 +19,9 @@ const DEFAULTS: Settings = {
   fastAnimations: false,
   cameraGlide: true,
   volume: 0.8,
+  quality: "high",
+  reducedMotion: false,
+  sunPreset: "day",
 };
 
 const KEY = "shipchess.settings";
@@ -44,6 +50,20 @@ export function loadSettings(): Settings {
         parsed.volume <= 1
           ? parsed.volume
           : DEFAULTS.volume,
+      quality:
+        parsed.quality === "low" || parsed.quality === "high"
+          ? parsed.quality
+          : DEFAULTS.quality,
+      reducedMotion:
+        typeof parsed.reducedMotion === "boolean"
+          ? parsed.reducedMotion
+          : DEFAULTS.reducedMotion,
+      sunPreset:
+        parsed.sunPreset === "day" ||
+        parsed.sunPreset === "golden" ||
+        parsed.sunPreset === "moonlit"
+          ? parsed.sunPreset
+          : DEFAULTS.sunPreset,
     };
   } catch {
     return { ...DEFAULTS };

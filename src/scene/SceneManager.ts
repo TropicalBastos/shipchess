@@ -29,6 +29,9 @@ export class SceneManager {
   readonly renderer: THREE.WebGLRenderer;
   readonly controls: OrbitControls;
   readonly sunDir = new THREE.Vector3(0.6, 0.34, 0.42).normalize();
+  private sun!: THREE.DirectionalLight;
+  private ambientLight!: THREE.AmbientLight;
+  private skyMat!: THREE.ShaderMaterial;
   private readonly fpsEl: HTMLDivElement;
   private frames = 0;
   private fpsTimer = 0;
@@ -61,25 +64,24 @@ export class SceneManager {
 
     // Sky dome + matching horizon fog.
     const horizon = new THREE.Color("#e5e9df");
-    const sky = new THREE.Mesh(
-      new THREE.SphereGeometry(300, 24, 16),
-      new THREE.ShaderMaterial({
-        vertexShader: SKY_VERT,
-        fragmentShader: SKY_FRAG,
-        uniforms: {
-          uZenith: { value: new THREE.Color("#2a6390") },
-          uHorizon: { value: horizon },
-        },
-        side: THREE.BackSide,
-        depthWrite: false,
-      }),
-    );
+    this.skyMat = new THREE.ShaderMaterial({
+      vertexShader: SKY_VERT,
+      fragmentShader: SKY_FRAG,
+      uniforms: {
+        uZenith: { value: new THREE.Color("#2a6390") },
+        uHorizon: { value: horizon },
+      },
+      side: THREE.BackSide,
+      depthWrite: false,
+    });
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 16), this.skyMat);
     this.scene.add(sky);
     this.scene.fog = new THREE.Fog(horizon, 55, 160);
 
-    const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
-    sun.position.copy(this.sunDir).multiplyScalar(100);
-    this.scene.add(sun, new THREE.AmbientLight(0xbfd4de, 0.9));
+    this.sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
+    this.sun.position.copy(this.sunDir).multiplyScalar(100);
+    this.ambientLight = new THREE.AmbientLight(0xbfd4de, 0.9);
+    this.scene.add(this.sun, this.ambientLight);
 
     this.fpsEl = document.createElement("div");
     this.fpsEl.style.cssText =
@@ -99,6 +101,11 @@ export class SceneManager {
   private glideFrom: number | null = null;
   private glideTo = 0;
   private glideT = 1;
+
+  /** Immediately stop any in-flight camera glide (reduced-motion honesty). */
+  cancelGlide(): void {
+    this.glideT = 1;
+  }
 
   glideToSide(color: "w" | "b"): void {
     this.glideFrom = Math.atan2(this.camera.position.x, this.camera.position.z);
@@ -122,6 +129,27 @@ export class SceneManager {
     const r = Math.hypot(this.camera.position.x, this.camera.position.z);
     this.camera.position.set(Math.sin(az) * r, this.camera.position.y, Math.cos(az) * r);
     this.camera.lookAt(0, 0, 0);
+  }
+
+  /** Apply a sun preset's lighting/sky half (the ocean applies its own). */
+  applyPreset(p: {
+    sunDir: [number, number, number];
+    sunColor: string;
+    sunIntensity: number;
+    ambient: string;
+    ambientIntensity: number;
+    zenith: string;
+    horizon: string;
+  }): void {
+    this.sunDir.set(...p.sunDir).normalize();
+    this.sun.position.copy(this.sunDir).multiplyScalar(100);
+    this.sun.color.set(p.sunColor);
+    this.sun.intensity = p.sunIntensity;
+    this.ambientLight.color.set(p.ambient);
+    this.ambientLight.intensity = p.ambientIntensity;
+    (this.skyMat.uniforms.uZenith.value as THREE.Color).set(p.zenith);
+    (this.skyMat.uniforms.uHorizon.value as THREE.Color).set(p.horizon);
+    (this.scene.fog as THREE.Fog).color.set(p.horizon);
   }
 
   render(dt: number): void {
