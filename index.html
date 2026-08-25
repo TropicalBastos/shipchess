@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ShipChess</title>
+    <title>ShipChess — chess on the open sea</title>
+    <meta
+      name="description"
+      content="3D naval chess: two fleets on a living ocean. Hotseat or face the Stockfish admiral."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%93%3C/text%3E%3C/svg%3E"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,7 +20,29 @@
     />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div
+        id="splash"
+        style="
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          background: #0d3a4d;
+          color: #e9ece4;
+          font: 600 18px system-ui;
+          letter-spacing: 0.2em;
+          z-index: 100;
+        "
+      >
+        <div style="font-size: 44px">⚓</div>
+        <div>SHIPCHESS</div>
+        <div style="font-size: 12px; opacity: 0.7">weighing anchor…</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

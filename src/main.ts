@@ -309,12 +309,30 @@ for (let i = 0; i < 8; i++) {
   );
 }
 
+// WebGL context loss: pause the world (three.js re-uploads GPU resources on
+// restore); the clamped dt already prevents a resume burst (plan Phase 8).
+let contextLost = false;
+sm.renderer.domElement.addEventListener("webglcontextlost", (e) => {
+  e.preventDefault();
+  contextLost = true;
+  hud.toast("Reconnecting to the GPU…", Infinity);
+});
+sm.renderer.domElement.addEventListener("webglcontextrestored", () => {
+  contextLost = false;
+  hud.toast("Back on the water", 1500);
+});
+
 // Render loop — dt clamped so a backgrounded tab resumes without a burst.
 const elapsedRef = { value: 0 };
 let last = performance.now();
 function frame(now: number): void {
   const dt = Math.min((now - last) / 1000, 1 / 30);
   last = now;
+  if (contextLost) {
+    requestAnimationFrame(frame);
+    return; // world time freezes with the canvas — nothing advances unseen
+  }
+
   elapsedRef.value += dt;
   const t = wrapTime(elapsedRef.value);
   ocean.setTime(t);
@@ -336,3 +354,4 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+document.getElementById("splash")?.remove(); // setup complete (P8-01)
