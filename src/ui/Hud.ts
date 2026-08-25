@@ -410,7 +410,7 @@ export class Hud {
         </div>
       </div>
       </div>
-      <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move</div>
+      <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move · <a href="licenses/THIRD-PARTY.txt" target="_blank" style="color:inherit">licenses</a></div>
     `;
     container.appendChild(this.menuEl);
 
@@ -549,9 +549,11 @@ export class Hud {
     this.toastEl.textContent = text;
     this.toastEl.style.display = "block";
     clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => {
-      if (this.toastEl) this.toastEl.style.display = "none";
-    }, ms);
+    if (Number.isFinite(ms)) {
+      this.toastTimer = window.setTimeout(() => {
+        if (this.toastEl) this.toastEl.style.display = "none";
+      }, ms);
+    } // Infinity = sticky until replaced (context loss)
   }
 
   showPause(active: boolean): void {

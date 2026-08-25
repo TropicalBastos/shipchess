@@ -3,14 +3,17 @@
 Chess on the open sea. Two fleets face off across a living ocean — every
 piece is a warship riding real waves, every capture a broadside and a
 sinking. Play a friend on one screen, or face the Admiral: a real Stockfish
-engine with four ranks from blundering Cadet to full-strength Fleet Admiral.
+engine with four ranks from blundering Cadet to the unhandicapped Fleet
+Admiral.
 
 ## Play
 
 - **Select a ship** by clicking it — its legal squares glow on the water.
 - **Move** by clicking a highlighted square. Illegal squares flash red.
 - **Drag** to orbit the camera, **scroll** to zoom.
-- **Menu button** (top right) pauses: change the time of day, or quit.
+- **Menu button** (top right) opens the game menu: change the time of day,
+  or quit to the main menu. (Chess is turn-based — nothing runs away while
+  it's open.)
 - **The knight is a submarine** — it dives under the fleet, which is why it
   can jump. The flagship's masthead light flashes red when in check.
 - Promotions offer all four ships, underpromotions included.

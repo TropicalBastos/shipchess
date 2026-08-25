@@ -315,7 +315,7 @@ let contextLost = false;
 sm.renderer.domElement.addEventListener("webglcontextlost", (e) => {
   e.preventDefault();
   contextLost = true;
-  hud.toast("Reconnecting to the GPU…", 60000);
+  hud.toast("Reconnecting to the GPU…", Infinity);
 });
 sm.renderer.domElement.addEventListener("webglcontextrestored", () => {
   contextLost = false;
@@ -330,9 +330,9 @@ function frame(now: number): void {
   last = now;
   if (contextLost) {
     requestAnimationFrame(frame);
-document.getElementById("splash")?.remove();
     return; // world time freezes with the canvas — nothing advances unseen
   }
+  document.getElementById("splash")?.remove(); // first healthy frame (P8-01)
   elapsedRef.value += dt;
   const t = wrapTime(elapsedRef.value);
   ocean.setTime(t);
