@@ -70,13 +70,8 @@ void main() {
   // Board mask from REST coordinates (1 inside the play area).
   float board = 1.0 - smoothstep(${BOARD_HALF.toFixed(1)}, ${(BOARD_HALF + 0.35).toFixed(2)}, max(abs(vRest.x), abs(vRest.y)));
 
-  // Tactical wireframe grid (user direction 2026-08-26): open water with a
-  // holographic overlay instead of solid squares — thin grid lines, corner
-  // nodes, a perimeter frame, and square parity kept as a faint tint.
-  // Parity formula unchanged (chess law W2-03, locked by Fleet.test).
-  vec2 cell = floor(vRest + ${BOARD_HALF.toFixed(1)});
-  float checker = mod(cell.x + cell.y + 1.0, 2.0);
-  water = mix(water, water * (0.88 + 0.2 * checker), board * 0.5);
+  // No board colour at all (user direction): the sea renders straight
+  // through the play area; only the chart grid marks it.
 
   // Cartographic, not neon (user direction): thin desaturated lines BLENDED
   // onto the water like a nautical chart overlay — no additive glow, no
@@ -94,14 +89,14 @@ void main() {
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
-  fres = min(fres, 0.55) * (1.0 - 0.85 * board);
+  fres = min(fres, 0.55) * (1.0 - 0.25 * board);
   water = mix(water, uSkyColor, fres);
 
   // Sun specular: tight glints + a broad sheen, damped over the board.
   vec3 halfDir = normalize(uSunDir + view);
   float ndh = max(dot(n, halfDir), 0.0);
   float spec = pow(ndh, 60.0) * 1.1 + pow(ndh, 8.0) * 0.08;
-  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - 0.9 * board);
+  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - 0.55 * board);
 
   // Simple lambert so swells read as form.
   float diff = 0.75 + 0.25 * max(dot(n, uSunDir), 0.0);
