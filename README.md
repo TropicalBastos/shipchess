@@ -24,10 +24,10 @@ Admiral.
 | --- | --- |
 | Pawn | Patrol boat |
 | Knight | Submarine |
-| Bishop | Frigate |
+| Bishop | Destroyer |
 | Rook | Battleship |
 | Queen | Aircraft carrier |
-| King | Flagship |
+| King | Fleet command vessel |
 
 ## The Admiral (AI opponent)
 

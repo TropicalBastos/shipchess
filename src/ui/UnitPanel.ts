@@ -28,7 +28,7 @@ const SHIP_CLASSES: Record<PieceType, string> = {
   b: "Destroyer",
   r: "Battleship",
   q: "Aircraft Carrier",
-  k: "Flagship",
+  k: "Fleet Command Vessel",
 };
 
 const CSS = `

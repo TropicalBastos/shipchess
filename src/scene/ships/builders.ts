@@ -128,5 +128,18 @@ export function buildShip(type: PieceType, materials: FleetMaterials): THREE.Gro
   const model = getShipModel(type, materials.ivory);
   const ship = model ?? BUILDERS[type](materials);
   ship.name = `ship-${type}`;
+  // The GLB king needs the check-warning signal light the procedural
+  // flagship carries on its mast: any mesh using the shared signal material
+  // flashes red when Fleet.setCheck pulses it.
+  if (model && type === "k") {
+    const top = new THREE.Box3().setFromObject(model).max.y;
+    const light = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028, 8, 6),
+      materials.signal,
+    );
+    light.name = "signalLight";
+    light.position.set(0, top + 0.03, 0);
+    ship.add(light);
+  }
   return ship;
 }
