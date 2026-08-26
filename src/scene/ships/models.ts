@@ -26,7 +26,7 @@ function normalize(scene: THREE.Group, targetLength: number): THREE.Group {
   const height = box.max.y - box.min.y;
   scene.position.set(
     scene.position.x - center.x,
-    scene.position.y - box.min.y - height * 0.22, // hull draft under water
+    scene.position.y - box.min.y - height * 0.12, // hull draft under water
     scene.position.z - center.z,
   );
   return wrap;
