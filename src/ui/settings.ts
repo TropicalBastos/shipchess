@@ -11,7 +11,7 @@ export interface Settings {
   volume: number;
   quality: "high" | "low";
   reducedMotion: boolean;
-  sunPreset: "day" | "golden" | "moonlit";
+  sunPreset: "day" | "moonlit";
 }
 
 const DEFAULTS: Settings = {
@@ -59,9 +59,7 @@ export function loadSettings(): Settings {
           ? parsed.reducedMotion
           : DEFAULTS.reducedMotion,
       sunPreset:
-        parsed.sunPreset === "day" ||
-        parsed.sunPreset === "golden" ||
-        parsed.sunPreset === "moonlit"
+        parsed.sunPreset === "day" || parsed.sunPreset === "moonlit"
           ? parsed.sunPreset
           : DEFAULTS.sunPreset,
     };

@@ -303,7 +303,6 @@ export class Hud {
       '<div class="scp-head" style="margin-bottom:6px">Time of day</div>' +
       '<div class="scm-seg" data-group="sun-pause">' +
       '<button class="scm-seg-btn" data-v="day">Day</button>' +
-      '<button class="scm-seg-btn" data-v="golden">Golden</button>' +
       '<button class="scm-seg-btn" data-v="moonlit">Moonlit</button></div>';
     pauseCard.append(resume, todWrap, quit);
     this.pauseEl.appendChild(pauseCard);
@@ -392,7 +391,6 @@ export class Hud {
           <div class="scm-label" style="text-align:center">Time of day</div>
           <div class="scm-seg scm-light" data-group="sun">
             <button class="scm-seg-btn" data-v="day">Day</button>
-            <button class="scm-seg-btn" data-v="golden">Golden hour</button>
             <button class="scm-seg-btn" data-v="moonlit">Moonlit</button>
           </div>
         </div>
