@@ -13,15 +13,15 @@ describe("guarded settings store", () => {
   });
 
   it("falls back to defaults on corrupt or version-mismatched blobs", () => {
-    localStorage.setItem("shipchess.settings", "{not json");
+    localStorage.setItem("navalchess.settings", "{not json");
     expect(loadSettings().fastAnimations).toBe(false);
-    localStorage.setItem("shipchess.settings", JSON.stringify({ version: 99 }));
+    localStorage.setItem("navalchess.settings", JSON.stringify({ version: 99 }));
     expect(loadSettings().cameraGlide).toBe(true);
   });
 
   it("rejects valid-version blobs with wrong field types (P5-08)", () => {
     localStorage.setItem(
-      "shipchess.settings",
+      "navalchess.settings",
       JSON.stringify({ version: 1, fastAnimations: "false", volume: 9 }),
     );
     const s = loadSettings();

@@ -24,7 +24,7 @@ const DEFAULTS: Settings = {
   sunPreset: "day",
 };
 
-const KEY = "shipchess.settings";
+const KEY = "navalchess.settings";
 
 export function loadSettings(): Settings {
   try {

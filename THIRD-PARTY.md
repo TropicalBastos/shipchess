@@ -1,6 +1,6 @@
 # Third-party software
 
-ShipChess ships with, or builds on, the following third-party software:
+NavalChess ships with, or builds on, the following third-party software:
 
 ## Stockfish (chess engine) — GPL-3.0
 - Files served: `public/engine/stockfish-18-lite-single.js` and
@@ -17,7 +17,7 @@ ShipChess ships with, or builds on, the following third-party software:
   `stockfish@18.0.8` on npm, which includes the source and build scripts).
 - The complete GPL-3.0 text is distributed with this application at
   `licenses/gpl-3.0.txt`.
-- The engine runs as a separate Web Worker and communicates with ShipChess
+- The engine runs as a separate Web Worker and communicates with NavalChess
   exclusively over UCI text messages. It is distributed here as an
   unmodified aggregate alongside the (MIT-licensed) application code.
 
@@ -30,7 +30,7 @@ ShipChess ships with, or builds on, the following third-party software:
 ## Fonts — SIL Open Font License 1.1 (served via Google Fonts)
 - Saira, Saira Stencil One.
 
-All sound effects and 3D models in ShipChess are procedurally generated at
+All sound effects and 3D models in NavalChess are procedurally generated at
 runtime and carry no third-party assets.
 
 ---

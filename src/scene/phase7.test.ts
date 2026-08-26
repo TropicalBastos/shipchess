@@ -68,7 +68,7 @@ describe("Phase 7: reduced-motion path completes a full scripted game", () => {
     // The combined acceptance path (P7-05): reduced-motion comes from a
     // STORED settings blob, and the low-quality ocean coexists in-scene.
     localStorage.setItem(
-      "shipchess.settings",
+      "navalchess.settings",
       JSON.stringify({ version: 1, reducedMotion: true, quality: "low" }),
     );
     const stored = loadSettings();
@@ -128,7 +128,7 @@ describe("Phase 7: audio + settings safety", () => {
 
   it("new settings fields validate types and fall back on junk", () => {
     localStorage.setItem(
-      "shipchess.settings",
+      "navalchess.settings",
       JSON.stringify({
         version: 1,
         quality: "ultra",

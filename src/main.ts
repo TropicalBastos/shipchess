@@ -239,7 +239,7 @@ hud.onSettingsChange = (s) => {
 };
 
 // Debug handle (harmless in production; invaluable under automation).
-(window as unknown as Record<string, unknown>).__shipchess = {
+(window as unknown as Record<string, unknown>).__navalchess = {
   state: () => controller.currentState(),
   fen: () => game.fen(),
   turn: () => game.turn(),

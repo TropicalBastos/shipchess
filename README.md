@@ -1,4 +1,4 @@
-# ⚓ ShipChess
+# ⚓ NavalChess
 
 Chess on the open sea. Two fleets face off across a living ocean — every
 piece is a warship riding real waves, every capture a broadside and a
@@ -63,5 +63,5 @@ at runtime.
 
 ## Licenses
 
-ShipChess application code is MIT (see LICENSE). The bundled Stockfish
+NavalChess application code is MIT (see LICENSE). The bundled Stockfish
 engine is GPL-3.0 — see THIRD-PARTY.md for full notices.

@@ -12,7 +12,7 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
-NOTE: This license covers the ShipChess application code only. The Stockfish
+NOTE: This license covers the NavalChess application code only. The Stockfish
 chess engine distributed alongside it (public/engine/) is a separate work
 under GPL-3.0 — see THIRD-PARTY.md.
 

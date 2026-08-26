@@ -50,8 +50,8 @@ const MENU_CSS = /* css */ `
   min-height: 100%; display: flex; flex-direction: column; align-items: center;
   gap: 14px; padding: 24px 0 44px; box-sizing: border-box;
 }
-.scm-inner > :first-child { margin-top: auto; }
-.scm-inner > :last-child { margin-bottom: auto; }
+.scm-inner::before { content: ""; margin-top: auto; }
+.scm-inner::after { content: ""; margin-bottom: auto; }
 .scm-title {
   font: 400 clamp(44px, 7vw, 68px) "Saira Stencil One", ${FONT_UI};
   letter-spacing: .12em; line-height: 1; color: #f2f0e6;
@@ -104,8 +104,10 @@ const MENU_CSS = /* css */ `
   margin-top: 6px; padding: 12px; border: none; border-radius: 9px; cursor: pointer;
   background: #d9b45c; color: #14232b; font: 700 16px ${FONT_UI};
   letter-spacing: .08em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: transform .12s ease, filter .12s ease;
 }
+.scm-cta svg { width: 17px; height: 17px; flex: none; }
 .scm-cta:hover { transform: translateY(-1px); filter: brightness(1.07); }
 .scm-toggle {
   display: flex; gap: 8px; align-items: center; color: #cfe0e8; cursor: pointer;
@@ -363,7 +365,7 @@ export class Hud {
     this.menuEl.className = "scm-root";
     this.menuEl.innerHTML = `
       <div class="scm-inner">
-      <div class="scm-title">SHIPCHESS</div>
+      <div class="scm-title">NAVALCHESS</div>
       <div class="scm-tag">Chess on the open sea</div>
       <div class="scm-cards">
         <button class="scm-card" data-mode="hotseat">
@@ -376,22 +378,6 @@ export class Hud {
           <span class="scm-card-name">Face the Admiral</span>
           <span class="scm-card-sub">Single player — pick fleet &amp; rank</span>
         </button>
-      </div>
-      <div class="scm-solo" hidden>
-        <div class="scm-label">Your fleet</div>
-        <div class="scm-seg" data-group="fleet">
-          <button class="scm-seg-btn sel" data-v="w"><span class="scm-dot scm-dot-w"></span>White</button>
-          <button class="scm-seg-btn" data-v="b"><span class="scm-dot scm-dot-b"></span>Black</button>
-        </div>
-        <div class="scm-label">Opposing rank</div>
-        <div class="scm-seg scm-seg-4" data-group="rank">
-          <button class="scm-seg-btn sel" data-v="cadet">Cadet</button>
-          <button class="scm-seg-btn" data-v="captain">Captain</button>
-          <button class="scm-seg-btn" data-v="admiral">Admiral</button>
-          <button class="scm-seg-btn" data-v="fleet">Fleet Adm.</button>
-        </div>
-        <div class="scm-hint" data-rankhint>Learning the ropes — expect blunders</div>
-        <button class="scm-cta">Set sail</button>
       </div>
       <div class="scm-settings">
         <label class="scm-toggle"><input type="checkbox" data-fast /><span>Fast animations</span></label>
@@ -410,6 +396,22 @@ export class Hud {
             <button class="scm-seg-btn" data-v="moonlit">Moonlit</button>
           </div>
         </div>
+      </div>
+      <div class="scm-solo" hidden>
+        <div class="scm-label">Your fleet</div>
+        <div class="scm-seg" data-group="fleet">
+          <button class="scm-seg-btn sel" data-v="w"><span class="scm-dot scm-dot-w"></span>White</button>
+          <button class="scm-seg-btn" data-v="b"><span class="scm-dot scm-dot-b"></span>Black</button>
+        </div>
+        <div class="scm-label">Opposing rank</div>
+        <div class="scm-seg scm-seg-4" data-group="rank">
+          <button class="scm-seg-btn sel" data-v="cadet">Cadet</button>
+          <button class="scm-seg-btn" data-v="captain">Captain</button>
+          <button class="scm-seg-btn" data-v="admiral">Admiral</button>
+          <button class="scm-seg-btn" data-v="fleet">Fleet Adm.</button>
+        </div>
+        <div class="scm-hint" data-rankhint>Learning the ropes — expect blunders</div>
+        <button class="scm-cta">Battle<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 10"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/></svg></button>
       </div>
       </div>
       <div class="scm-foot">drag to orbit · scroll to zoom · click a ship to move · <a href="licenses/THIRD-PARTY.txt" target="_blank" style="color:inherit">licenses</a></div>
