@@ -118,6 +118,7 @@ export class SceneManager {
   readonly controls: OrbitControls;
   readonly sunDir = new THREE.Vector3(0.6, 0.34, 0.42).normalize();
   private sun!: THREE.DirectionalLight;
+  private rim!: THREE.DirectionalLight;
   private spot!: THREE.SpotLight;
   private ambientLight!: THREE.AmbientLight;
   private skyMat!: THREE.ShaderMaterial;
@@ -180,6 +181,14 @@ export class SceneManager {
     // out of the water's tones; intensity grows as the sun dims. The ocean
     // shader ignores scene lights, so Ocean.setBoardLight paints the matching
     // pool on the squares.
+    // Rim/back light opposite the sun: traces a bright edge along hulls and
+    // masts so silhouettes separate from the water in every preset.
+    this.rim = new THREE.DirectionalLight(0xdfe9f2, 0.6);
+    this.rim.position
+      .set(-this.sunDir.x, Math.max(this.sunDir.y, 0.5), -this.sunDir.z)
+      .normalize()
+      .multiplyScalar(100);
+    this.scene.add(this.rim);
     this.spot = new THREE.SpotLight(0xfff2dd, 1.2, 0, 0.34, 0.55, 0);
     this.spot.position.set(5, 24, 6);
     this.spot.target.position.set(0, 0, 0);
@@ -242,6 +251,7 @@ export class SceneManager {
     ambientIntensity: number;
     zenith: string;
     horizon: string;
+    skyTint: string;
     cloudColor: string;
     cloudAmount: number;
     starIntensity: number;
@@ -253,6 +263,12 @@ export class SceneManager {
     this.ambientLight.color.set(p.ambient);
     this.ambientLight.intensity = p.ambientIntensity;
     this.spot.intensity = 1.0 + Math.max(0, 2.2 - p.sunIntensity) * 1.1;
+    this.rim.color.set(p.skyTint);
+    this.rim.intensity = 0.5 + Math.max(0, 2.6 - p.sunIntensity) * 0.25;
+    this.rim.position
+      .set(-this.sunDir.x, Math.max(this.sunDir.y, 0.5), -this.sunDir.z)
+      .normalize()
+      .multiplyScalar(100);
     const u = this.skyMat.uniforms;
     (u.uZenith.value as THREE.Color).set(p.zenith);
     (u.uHorizon.value as THREE.Color).set(p.horizon);

@@ -49,6 +49,18 @@ export async function preloadShipModels(): Promise<void> {
     wanted.map(async ([key, url, height]) => {
       try {
         const gltf = await loader.loadAsync(url);
+        // Visibility floor for the black fleet: dark textures on dark water
+        // can vanish, so lift albedo slightly and add a whisper of emissive.
+        if (key.endsWith(":b")) {
+          gltf.scene.traverse((o) => {
+            const mesh = o as THREE.Mesh;
+            const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
+            if (mat?.isMeshStandardMaterial) {
+              mat.color.multiplyScalar(1.25);
+              mat.emissive.setRGB(0.045, 0.05, 0.055);
+            }
+          });
+        }
         registry.set(key, normalize(gltf.scene, height));
       } catch {
         // Missing/failed model: the procedural builder covers this ship.
