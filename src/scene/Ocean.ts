@@ -76,23 +76,21 @@ void main() {
   // Parity formula unchanged (chess law W2-03, locked by Fleet.test).
   vec2 cell = floor(vRest + ${BOARD_HALF.toFixed(1)});
   float checker = mod(cell.x + cell.y + 1.0, 2.0);
-  water = mix(water, water * (0.82 + 0.32 * checker), board * 0.4);
+  water = mix(water, water * (0.88 + 0.2 * checker), board * 0.5);
 
-  // Spotlight pool doubles as the grid's energy source: brighter at center
-  // and at night (uBoardLight rises as the sun dims).
+  // Cartographic, not neon (user direction): thin desaturated lines BLENDED
+  // onto the water like a nautical chart overlay — no additive glow, no
+  // halos. A touch more presence at night via uBoardLight.
   float pool = 1.0 - smoothstep(2.5, ${(BOARD_HALF + 1.2).toFixed(1)}, length(vRest));
-  float gridGlow = 0.85 + uBoardLight * (0.9 + 0.7 * pool);
+  float lineAlpha = 0.32 + uBoardLight * 0.25 + pool * 0.04;
 
   vec2 g = abs(fract(vRest + 0.5) - 0.5);
   float dLine = min(g.x, g.y);
-  float line = 1.0 - smoothstep(0.012, 0.055, dLine);
-  float halo = 1.0 - smoothstep(0.0, 0.14, dLine);
-  float node = (1.0 - smoothstep(0.0, 0.13, g.x)) * (1.0 - smoothstep(0.0, 0.13, g.y));
+  float line = 1.0 - smoothstep(0.008, 0.035, dLine);
   float dEdge = abs(max(abs(vRest.x), abs(vRest.y)) - ${BOARD_HALF.toFixed(1)});
-  float frame = 1.0 - smoothstep(0.03, 0.1, dEdge);
-  vec3 grid = uGridColor * gridGlow;
-  water += grid * board * (line * 0.75 + halo * halo * 0.1 + node * 0.55);
-  water += grid * frame * 0.85;
+  float frame = 1.0 - smoothstep(0.015, 0.06, dEdge);
+  water = mix(water, uGridColor, line * board * lineAlpha);
+  water = mix(water, uGridColor, frame * min(1.0, lineAlpha * 1.6));
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
@@ -151,7 +149,7 @@ export class Ocean {
       uDeepColor: { value: new THREE.Color("#0a3450") },
       uCrestColor: { value: new THREE.Color("#2b7d95") },
       uSkyColor: { value: new THREE.Color("#e9ece4") },
-      uGridColor: { value: new THREE.Color("#6fe3ff") },
+      uGridColor: { value: new THREE.Color("#c9dade") },
       uFogColor: { value: new THREE.Color("#e5e9df") },
       uFogNear: { value: 70 },
       uFogFar: { value: 340 },
