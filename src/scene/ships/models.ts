@@ -56,8 +56,8 @@ export async function preloadShipModels(): Promise<void> {
             const mesh = o as THREE.Mesh;
             const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
             if (mat?.isMeshStandardMaterial) {
-              mat.color.multiplyScalar(1.25);
-              mat.emissive.setRGB(0.045, 0.05, 0.055);
+              mat.color.multiplyScalar(1.1);
+              mat.emissive.setRGB(0.02, 0.022, 0.025);
             }
           });
         }
