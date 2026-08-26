@@ -42,6 +42,8 @@ export async function preloadShipModels(): Promise<void> {
     ["b:b", `${base}models/bishop_black.glb`, 0.76],
     ["n:w", `${base}models/knight_white.glb`, 0.56],
     ["n:b", `${base}models/knight_black.glb`, 0.56],
+    ["q:w", `${base}models/queen_white.glb`, 0.95],
+    ["q:b", `${base}models/queen_black.glb`, 0.95],
     ["r:w", `${base}models/rook_white.glb`, 0.92],
     ["r:b", `${base}models/rook_black.glb`, 0.92],
   ];
