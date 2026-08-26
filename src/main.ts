@@ -25,6 +25,9 @@ import { wrapTime } from "./scene/WaveField";
 import { START_FEN } from "./scene/fen";
 import { BOARD_HALF, SQUARE_SIZE } from "./scene/waveConstants";
 import { Hud } from "./ui/Hud";
+import { UnitPanel } from "./ui/UnitPanel";
+import { computeUnitStats } from "./game/unitStats";
+import type { UnitStats } from "./game/unitStats";
 import "./style.css";
 
 const app = document.getElementById("app")!;
@@ -122,6 +125,9 @@ const soundedAnimator = {
   },
 };
 
+const unitPanel = new UnitPanel(app);
+let unitStats = new Map<string, UnitStats>();
+
 const controller: GameController = new GameController(
   game,
   soundedAnimator,
@@ -129,6 +135,17 @@ const controller: GameController = new GameController(
     onSelection: (sq, legal) => {
       if (sq) audio.creak();
       highlights.setSelection(sq, legal);
+      const ship = sq ? fleet.shipAt(sq) : null;
+      if (sq && ship) {
+        unitPanel.show({
+          type: ship.type,
+          color: ship.color,
+          stats: unitStats.get(sq) ?? { tiles: 0, sorties: 0, battles: 0 },
+          targets: game.captureTargets(sq),
+        });
+      } else {
+        unitPanel.hide();
+      }
     },
     onDenied: (sq) => highlights.flashDenial(sq),
     onCheck: (color) => {
@@ -166,6 +183,7 @@ const controller: GameController = new GameController(
       })();
     },
     onPosition: (sync) => {
+      unitStats = computeUnitStats(game.verboseHistory());
       hud.setPosition(sync);
       hud.showMenu(sync.inMenu);
       fleet.setCaptured(
@@ -294,6 +312,7 @@ function frame(now: number): void {
   ocean.setTime(t);
   sm.setSkyTime(t);
   animator.tick(dt * (settings.fastAnimations ? 4 : 1));
+  unitPanel.update(dt);
   fleet.update(t);
   highlights.update(t, dt);
 

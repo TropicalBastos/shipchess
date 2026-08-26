@@ -196,7 +196,7 @@ export class SceneManager {
 
     this.fpsEl = document.createElement("div");
     this.fpsEl.style.cssText =
-      "position:fixed;top:8px;left:8px;color:#fff;background:rgba(0,0,0,.45);" +
+      "position:fixed;bottom:8px;right:8px;color:#fff;background:rgba(0,0,0,.45);" +
       "font:12px monospace;padding:2px 6px;border-radius:3px;z-index:10";
     container.appendChild(this.fpsEl);
 

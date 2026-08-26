@@ -151,6 +151,26 @@ export class ChessGame {
     return this.chess.history();
   }
 
+  /** Verbose history for derived per-unit stats (see unitStats.ts). */
+  verboseHistory(): Array<{
+    from: string;
+    to: string;
+    captured?: string;
+    flags: string;
+  }> {
+    return this.chess.history({ verbose: true });
+  }
+
+  /** Distinct enemy squares this unit can currently capture on. */
+  captureTargets(square: string): number {
+    return new Set(
+      this.chess
+        .moves({ square: square as Square, verbose: true })
+        .filter((m) => m.captured)
+        .map((m) => m.to),
+    ).size;
+  }
+
   /**
    * Captured pieces derived from authoritative history (never accumulated
    * separately — Phase 4 review P4-08): survives undo and rematch.
