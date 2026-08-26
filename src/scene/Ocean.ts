@@ -42,8 +42,7 @@ uniform vec3 uSunDir;
 uniform vec3 uDeepColor;
 uniform vec3 uCrestColor;
 uniform vec3 uSkyColor;
-uniform vec3 uLightSquare;
-uniform vec3 uDarkSquare;
+uniform vec3 uGridColor;
 uniform vec3 uFogColor;
 uniform float uFogNear;
 uniform float uFogFar;
@@ -71,19 +70,29 @@ void main() {
   // Board mask from REST coordinates (1 inside the play area).
   float board = 1.0 - smoothstep(${BOARD_HALF.toFixed(1)}, ${(BOARD_HALF + 0.35).toFixed(2)}, max(abs(vRest.x), abs(vRest.y)));
 
-  // 8×8 checker + grid lines, only inside the board.
+  // Tactical wireframe grid (user direction 2026-08-26): open water with a
+  // holographic overlay instead of solid squares — thin grid lines, corner
+  // nodes, a perimeter frame, and square parity kept as a faint tint.
+  // Parity formula unchanged (chess law W2-03, locked by Fleet.test).
   vec2 cell = floor(vRest + ${BOARD_HALF.toFixed(1)});
-  // +1.0 so a1 (cell 0,7) is a DARK square, per chess law (review W2-03).
   float checker = mod(cell.x + cell.y + 1.0, 2.0);
-  vec3 squares = mix(uDarkSquare, uLightSquare, checker);
-  // The overhead spotlight's pool on the water (scene lights don't reach
-  // this shader): a soft radial lift, brightest at board center.
+  water = mix(water, water * (0.82 + 0.32 * checker), board * 0.4);
+
+  // Spotlight pool doubles as the grid's energy source: brighter at center
+  // and at night (uBoardLight rises as the sun dims).
   float pool = 1.0 - smoothstep(2.5, ${(BOARD_HALF + 1.2).toFixed(1)}, length(vRest));
-  squares *= 1.0 + uBoardLight * (0.25 + 0.5 * pool);
+  float gridGlow = 0.85 + uBoardLight * (0.9 + 0.7 * pool);
+
   vec2 g = abs(fract(vRest + 0.5) - 0.5);
-  float line = 1.0 - smoothstep(0.015, 0.05, min(g.x, g.y));
-  squares = mix(squares, squares * 0.55, line);
-  water = mix(water, squares, board * 0.65);
+  float dLine = min(g.x, g.y);
+  float line = 1.0 - smoothstep(0.012, 0.055, dLine);
+  float halo = 1.0 - smoothstep(0.0, 0.14, dLine);
+  float node = (1.0 - smoothstep(0.0, 0.13, g.x)) * (1.0 - smoothstep(0.0, 0.13, g.y));
+  float dEdge = abs(max(abs(vRest.x), abs(vRest.y)) - ${BOARD_HALF.toFixed(1)});
+  float frame = 1.0 - smoothstep(0.03, 0.1, dEdge);
+  vec3 grid = uGridColor * gridGlow;
+  water += grid * board * (line * 0.75 + halo * halo * 0.1 + node * 0.55);
+  water += grid * frame * 0.85;
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
@@ -142,8 +151,7 @@ export class Ocean {
       uDeepColor: { value: new THREE.Color("#0a3450") },
       uCrestColor: { value: new THREE.Color("#2b7d95") },
       uSkyColor: { value: new THREE.Color("#e9ece4") },
-      uLightSquare: { value: new THREE.Color("#aac9c0") },
-      uDarkSquare: { value: new THREE.Color("#26505c") },
+      uGridColor: { value: new THREE.Color("#6fe3ff") },
       uFogColor: { value: new THREE.Color("#e5e9df") },
       uFogNear: { value: 70 },
       uFogFar: { value: 340 },
