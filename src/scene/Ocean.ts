@@ -77,15 +77,21 @@ void main() {
   // onto the water like a nautical chart overlay — no additive glow, no
   // halos. A touch more presence at night via uBoardLight.
   float pool = 1.0 - smoothstep(2.5, ${(BOARD_HALF + 1.2).toFixed(1)}, length(vRest));
-  float lineAlpha = 0.32 + uBoardLight * 0.25 + pool * 0.04;
+  float lineAlpha = 0.55 + uBoardLight * 0.2 + pool * 0.04;
 
+  // Strategy-map grid: crisp hairlines at near-constant screen width
+  // (fwidth-based AA), narrower but more opaque than the old soft bands.
   vec2 g = abs(fract(vRest + 0.5) - 0.5);
   float dLine = min(g.x, g.y);
-  float line = 1.0 - smoothstep(0.008, 0.035, dLine);
+  float aa = fwidth(dLine);
+  float hw = max(0.006, aa * 1.1);
+  float line = 1.0 - smoothstep(hw - aa, hw + aa, dLine);
   float dEdge = abs(max(abs(vRest.x), abs(vRest.y)) - ${BOARD_HALF.toFixed(1)});
-  float frame = 1.0 - smoothstep(0.015, 0.06, dEdge);
+  float aaE = fwidth(dEdge);
+  float hwE = max(0.02, aaE * 1.8); // heavier boundary: map-frame hierarchy
+  float frame = 1.0 - smoothstep(hwE - aaE, hwE + aaE, dEdge);
   water = mix(water, uGridColor, line * board * lineAlpha);
-  water = mix(water, uGridColor, frame * min(1.0, lineAlpha * 1.6));
+  water = mix(water, uGridColor, frame * min(1.0, lineAlpha * 1.5));
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
