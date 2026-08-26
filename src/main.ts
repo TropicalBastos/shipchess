@@ -257,10 +257,12 @@ function labelSprite(text: string): THREE.Sprite {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
   const ctx = c.getContext("2d")!;
-  ctx.font = "bold 40px system-ui, sans-serif";
+  // Quiet cartographic annotations: grid-line tint, light weight — the
+  // coordinates should support the chart, not float over it.
+  ctx.font = "500 36px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(242,240,230,0.92)";
+  ctx.fillStyle = "rgba(201,218,222,0.55)";
   ctx.fillText(text, 32, 34);
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({
@@ -268,7 +270,7 @@ function labelSprite(text: string): THREE.Sprite {
       depthWrite: false,
     }),
   );
-  sprite.scale.setScalar(0.42);
+  sprite.scale.setScalar(0.32);
   return sprite;
 }
 for (let i = 0; i < 8; i++) {
