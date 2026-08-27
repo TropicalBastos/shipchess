@@ -11,7 +11,7 @@ describe("Hud promotion wiring (DOM)", () => {
   beforeEach(() => {
     hud?.dispose(); // the leak this test file caught (review M3-09)
     document.body.innerHTML = "";
-    hud = new Hud(document.body, { version: 1, fastAnimations: false, cameraGlide: true, volume: 0.8, quality: "high", reducedMotion: false, sunPreset: "day" });
+    hud = new Hud(document.body, { version: 1, fastAnimations: false, cameraGlide: true, volume: 0.8, quality: "high", reducedMotion: false, sunPreset: "day", checkeredBoard: true });
     picks = [];
     cancels = 0;
     hud.onPromotionPick = (p) => picks.push(p);

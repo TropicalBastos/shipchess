@@ -380,6 +380,7 @@ export class Hud {
       </div>
       <div class="scm-settings">
         <label class="scm-toggle"><input type="checkbox" data-fast /><span>Fast animations</span></label>
+        <label class="scm-toggle"><input type="checkbox" data-checker /><span>Checkered board</span></label>
         <div class="scm-tod">
           <div class="scm-label" style="text-align:center">Time of day</div>
           <div class="scm-seg scm-light" data-group="sun">
@@ -458,6 +459,12 @@ export class Hud {
     fastCb.checked = settings.fastAnimations;
     fastCb.addEventListener("change", () => {
       settings.fastAnimations = fastCb.checked;
+      this.onSettingsChange?.(settings);
+    });
+    const checkerCb = q<HTMLInputElement>("[data-checker]");
+    checkerCb.checked = settings.checkeredBoard;
+    checkerCb.addEventListener("change", () => {
+      settings.checkeredBoard = checkerCb.checked;
       this.onSettingsChange?.(settings);
     });
     const sunSegs = [

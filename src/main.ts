@@ -34,7 +34,13 @@ const app = document.getElementById("app")!;
 const sm = new SceneManager(app);
 const bootSettings = loadSettings();
 const ocean = new Ocean(sm.sunDir, bootSettings.quality === "low" ? 0.5 : 1);
+ocean.setCheckered(bootSettings.checkeredBoard);
 sm.scene.add(ocean.mesh);
+
+// Board map texture experiments (photo tile) read as noise at this camera
+// distance — the strategy-map look comes from the painterly procedural
+// shading in Ocean's board mask instead. setMapTexture remains available
+// if a stylized painted texture is tried later.
 
 // Textured ship models load before the fleet builds (procedural fallback
 // on failure — the board must never come up empty).
@@ -234,6 +240,7 @@ hud.onSettingsChange = (s) => {
   saveSettings(s);
   audio.setVolume(s.volume);
   applySunPreset(s.sunPreset);
+  ocean.setCheckered(s.checkeredBoard);
   animator.instantMode = document.hidden || s.reducedMotion;
   if (s.reducedMotion || !s.cameraGlide) sm.cancelGlide(); // RF-02
 };

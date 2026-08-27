@@ -47,6 +47,10 @@ uniform vec3 uFogColor;
 uniform float uFogNear;
 uniform float uFogFar;
 uniform float uBoardLight;
+uniform sampler2D uMapTex;
+uniform float uMapTexAmount;
+uniform vec3 uMapTint;
+uniform float uChecker;
 varying vec2 vRest;
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -102,18 +106,33 @@ void main() {
   // The map is drawn in REST space, so it is "printed" on the board and
   // does not slide with the swell; a whisper of wave lift survives so the
   // ships still read as afloat.
+  // Strategy-map CHESSBOARD: parity gives proper light/dark squares in the
+  // preset palette (boundaries at integer vRest); the Tier-1 posterized
+  // depth bands, contours, and grain survive as in-square texture so each
+  // square still reads as a piece of printed chart.
   float mapN = fbm(vRest * 0.5 + 7.3);
   float bands = 4.0;
-  vec3 mapDeep = uDeepColor * 0.92;
-  vec3 mapLight = mix(uDeepColor, uCrestColor, 0.8);
-  vec3 mapCol = mix(mapDeep, mapLight, floor(mapN * bands) / (bands - 1.0));
+  float band = floor(mapN * bands) / (bands - 1.0);
   float fb = fract(mapN * bands);
   float contour = 1.0 - smoothstep(0.02, 0.09, min(fb, 1.0 - fb));
-  mapCol *= 1.0 - contour * 0.12;                    // bathymetry rings
+  float parity = mod(floor(vRest.x) + floor(vRest.y), 2.0);
+  vec3 mapCol = mix(uDeepColor * 0.7, mix(uDeepColor, uCrestColor, 0.95), parity);
+  mapCol *= 0.84 + 0.26 * band;                      // depth-band texture
+  mapCol *= 1.0 - contour * 0.1;                     // bathymetry rings
   mapCol += (vnoise(vRest * 34.0) - 0.5) * 0.035;    // paper grain
+  // Provided ocean texture (Tier 2), one tile PER SQUARE: squares are 1
+  // rest-unit and the sampler uses hardware mirrored repeat, so adjacent
+  // squares flip the image — seamless edges and less visible repetition.
+  // Tinted by the preset so it dims/cools at night; the procedural bands
+  // above remain the fallback until the texture loads.
+  vec2 mapUv = vRest;
+  vec3 texCol = texture2D(uMapTex, mapUv).rgb * uMapTint;
+  mapCol = mix(mapCol, texCol, uMapTexAmount);
   mapCol *= 0.96 + 0.08 * lift;                      // whisper of swell
   mapCol *= 1.0 + uBoardLight * 0.25;                // night spotlight pool
-  water = mix(water, mapCol, board);
+  // uChecker toggles the whole map treatment: off = open-water chart
+  // (sea through the board, grid only — the pre-map look).
+  water = mix(water, mapCol, board * uChecker);
 
   // Cartographic, not neon (user direction): thin desaturated lines BLENDED
   // onto the water like a nautical chart overlay — no additive glow, no
@@ -137,18 +156,19 @@ void main() {
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
-  fres = min(fres, 0.55) * (1.0 - board); // fully flat on the map
+  // Fully flat on the map; the open-water chart keeps its gentler damping.
+  fres = min(fres, 0.55) * (1.0 - board * mix(0.25, 1.0, uChecker));
   water = mix(water, uSkyColor, fres);
 
   // Sun specular: tight glints + a broad sheen, damped over the board.
   vec3 halfDir = normalize(uSunDir + view);
   float ndh = max(dot(n, halfDir), 0.0);
   float spec = pow(ndh, 60.0) * 1.1 + pow(ndh, 8.0) * 0.08;
-  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - board); // no glints on the map
+  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - board * mix(0.55, 1.0, uChecker));
 
   // Simple lambert so swells read as form; mostly flattened on the map.
   float diff = 0.75 + 0.25 * max(dot(n, uSunDir), 0.0);
-  water *= mix(diff, 1.0, board * 0.75);
+  water *= mix(diff, 1.0, board * 0.75 * uChecker);
 
   // Horizon fog matching SceneManager's scene.fog so the far ocean edge
   // dissolves into the sky instead of silhouetting against it.
@@ -197,7 +217,20 @@ export class Ocean {
       uFogNear: { value: 70 },
       uFogFar: { value: 340 },
       uBoardLight: { value: 0.15 },
+      // 1x1 white placeholder so the sampler is always bound; the real
+      // board texture arrives via setMapTexture once loaded.
+      uMapTex: {
+        value: new THREE.DataTexture(
+          new Uint8Array([255, 255, 255, 255]),
+          1,
+          1,
+        ),
+      },
+      uMapTexAmount: { value: 0 },
+      uMapTint: { value: new THREE.Color("#ffffff") },
+      uChecker: { value: 1 },
     };
+    (this.uniforms.uMapTex.value as THREE.DataTexture).needsUpdate = true;
 
     const mat = new THREE.ShaderMaterial({
       vertexShader: VERT,
@@ -219,6 +252,19 @@ export class Ocean {
     this.uniforms.uBoardLight.value = v;
   }
 
+  /** Checkered strategy-map board on/off (off = open-water chart). */
+  setCheckered(on: boolean): void {
+    this.uniforms.uChecker.value = on ? 1 : 0;
+  }
+
+  /** Board map texture (Tier 2): stretched once across the play area. */
+  setMapTexture(tex: THREE.Texture): void {
+    tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
+    tex.anisotropy = 8;
+    this.uniforms.uMapTex.value = tex;
+    this.uniforms.uMapTexAmount.value = 1;
+  }
+
   /** Sun-preset support (Phase 7). */
   setSunDir(dir: THREE.Vector3): void {
     (this.uniforms.uSunDir.value as THREE.Vector3).copy(dir).normalize();
@@ -231,5 +277,14 @@ export class Ocean {
     // Fog matches the HORIZON, not the fresnel sky tint (P7-04 — moonlit's
     // bright tint made the far sea fade pale against a dark horizon).
     (this.uniforms.uFogColor.value as THREE.Color).set(fog);
+    // Board texture tint: ratio of this preset's deep color to the day
+    // baseline, so the photo reads neutral by day and dims/cools by night.
+    const day = new THREE.Color("#0a3450");
+    const d = new THREE.Color(deep);
+    (this.uniforms.uMapTint.value as THREE.Color).setRGB(
+      Math.min(1.25, d.r / Math.max(day.r, 1e-3)),
+      Math.min(1.25, d.g / Math.max(day.g, 1e-3)),
+      Math.min(1.25, d.b / Math.max(day.b, 1e-3)),
+    );
   }
 }

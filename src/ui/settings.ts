@@ -12,6 +12,8 @@ export interface Settings {
   quality: "high" | "low";
   reducedMotion: boolean;
   sunPreset: "day" | "moonlit";
+  /** Checkered strategy-map board (off = open-water chart with grid only). */
+  checkeredBoard: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -22,6 +24,7 @@ const DEFAULTS: Settings = {
   quality: "high",
   reducedMotion: false,
   sunPreset: "day",
+  checkeredBoard: true,
 };
 
 const KEY = "navalchess.settings";
@@ -51,6 +54,10 @@ export function loadSettings(): Settings {
         parsed.sunPreset === "day" || parsed.sunPreset === "moonlit"
           ? parsed.sunPreset
           : DEFAULTS.sunPreset,
+      checkeredBoard:
+        typeof parsed.checkeredBoard === "boolean"
+          ? parsed.checkeredBoard
+          : DEFAULTS.checkeredBoard,
     };
   } catch {
     return { ...DEFAULTS };
