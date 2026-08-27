@@ -65,16 +65,18 @@ describe("Phase 7: sun presets", () => {
 
 describe("Phase 7: reduced-motion path completes a full scripted game", () => {
   it("scholar's mate runs to checkmate with reduced motion + low quality together", async () => {
-    // The combined acceptance path (P7-05): reduced-motion comes from a
-    // STORED settings blob, and the low-quality ocean coexists in-scene.
+    // Reduced-motion and low-quality were retired from the settings UI
+    // (2026-08-27): stored values are pinned back to defaults on load, so
+    // the combined path drives the flags directly instead of via storage.
     localStorage.setItem(
       "navalchess.settings",
       JSON.stringify({ version: 1, reducedMotion: true, quality: "low" }),
     );
     const stored = loadSettings();
-    expect(stored.reducedMotion).toBe(true);
+    expect(stored.reducedMotion).toBe(false); // retired field: pinned
+    expect(stored.quality).toBe("high"); // retired field: pinned
     const scene = new THREE.Scene();
-    const lowOcean = new Ocean(new THREE.Vector3(0, 1, 0), stored.quality === "low" ? 0.5 : 1);
+    const lowOcean = new Ocean(new THREE.Vector3(0, 1, 0), 0.5);
     scene.add(lowOcean.mesh);
     const highCount = new Ocean(new THREE.Vector3(0, 1, 0), 1).mesh
       .geometry.attributes.position.count;
@@ -84,7 +86,7 @@ describe("Phase 7: reduced-motion path completes a full scripted game", () => {
     const fleet = new Fleet(scene);
     const game = new ChessGame();
     const animator = new Animator();
-    animator.instantMode = stored.reducedMotion; // the main-wiring mapping
+    animator.instantMode = true; // reduced-motion path, driven directly
     const sa = new ShipAnimator(fleet, animator, new Effects(scene, animator), () => 0);
     let over = false;
     const gc = new GameController(game, sa, {

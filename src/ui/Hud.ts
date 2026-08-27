@@ -380,13 +380,6 @@ export class Hud {
       </div>
       <div class="scm-settings">
         <label class="scm-toggle"><input type="checkbox" data-fast /><span>Fast animations</span></label>
-        <label class="scm-toggle"><input type="checkbox" data-reduced /><span>Reduced motion</span></label>
-        <label class="scm-toggle"><input type="checkbox" data-glide /><span>Camera glide</span></label>
-        <label class="scm-toggle"><input type="checkbox" data-lowq /><span>Low quality (reload)</span></label>
-        <label class="scm-toggle">
-          <span>Volume</span>
-          <input type="range" min="0" max="1" step="0.05" data-volume style="accent-color:#d9b45c;width:90px" />
-        </label>
         <div class="scm-tod">
           <div class="scm-label" style="text-align:center">Time of day</div>
           <div class="scm-seg scm-light" data-group="sun">
@@ -465,30 +458,6 @@ export class Hud {
     fastCb.checked = settings.fastAnimations;
     fastCb.addEventListener("change", () => {
       settings.fastAnimations = fastCb.checked;
-      this.onSettingsChange?.(settings);
-    });
-    const glideCb = q<HTMLInputElement>("[data-glide]");
-    glideCb.checked = settings.cameraGlide;
-    glideCb.addEventListener("change", () => {
-      settings.cameraGlide = glideCb.checked;
-      this.onSettingsChange?.(settings);
-    });
-    const reducedCb = q<HTMLInputElement>("[data-reduced]");
-    reducedCb.checked = settings.reducedMotion;
-    reducedCb.addEventListener("change", () => {
-      settings.reducedMotion = reducedCb.checked;
-      this.onSettingsChange?.(settings);
-    });
-    const lowqCb = q<HTMLInputElement>("[data-lowq]");
-    lowqCb.checked = settings.quality === "low";
-    lowqCb.addEventListener("change", () => {
-      settings.quality = lowqCb.checked ? "low" : "high";
-      this.onSettingsChange?.(settings);
-    });
-    const vol = q<HTMLInputElement>("[data-volume]");
-    vol.value = String(settings.volume);
-    vol.addEventListener("input", () => {
-      settings.volume = Number(vol.value);
       this.onSettingsChange?.(settings);
     });
     const sunSegs = [

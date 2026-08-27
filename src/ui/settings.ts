@@ -40,24 +40,13 @@ export function loadSettings(): Settings {
         typeof parsed.fastAnimations === "boolean"
           ? parsed.fastAnimations
           : DEFAULTS.fastAnimations,
-      cameraGlide:
-        typeof parsed.cameraGlide === "boolean"
-          ? parsed.cameraGlide
-          : DEFAULTS.cameraGlide,
-      volume:
-        typeof parsed.volume === "number" &&
-        parsed.volume >= 0 &&
-        parsed.volume <= 1
-          ? parsed.volume
-          : DEFAULTS.volume,
-      quality:
-        parsed.quality === "low" || parsed.quality === "high"
-          ? parsed.quality
-          : DEFAULTS.quality,
-      reducedMotion:
-        typeof parsed.reducedMotion === "boolean"
-          ? parsed.reducedMotion
-          : DEFAULTS.reducedMotion,
+      // Retired from the settings UI (2026-08-27): pinned to defaults so a
+      // previously stored value can't leave the game in a state the menu
+      // can no longer reach. Fields kept for easy reinstatement.
+      cameraGlide: DEFAULTS.cameraGlide,
+      volume: DEFAULTS.volume,
+      quality: DEFAULTS.quality,
+      reducedMotion: DEFAULTS.reducedMotion,
       sunPreset:
         parsed.sunPreset === "day" || parsed.sunPreset === "moonlit"
           ? parsed.sunPreset
