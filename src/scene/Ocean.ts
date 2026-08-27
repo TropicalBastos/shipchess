@@ -54,6 +54,32 @@ varying float vHeight;
 
 ${wavesGlsl()}
 
+// Value noise for the strategy-map board shading (same construction as the
+// sky shader's cloud noise).
+float hash21(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0;
+  float amp = 0.5;
+  for (int i = 0; i < 4; i++) {
+    v += amp * vnoise(p);
+    p = p * 2.03 + vec2(19.7, 7.3);
+    amp *= 0.5;
+  }
+  return v;
+}
+
 void main() {
   vec3 n = normalize(vNormal);
   vec3 view = normalize(cameraPosition - vWorldPos);
@@ -70,8 +96,24 @@ void main() {
   // Board mask from REST coordinates (1 inside the play area).
   float board = 1.0 - smoothstep(${BOARD_HALF.toFixed(1)}, ${(BOARD_HALF + 0.35).toFixed(2)}, max(abs(vRest.x), abs(vRest.y)));
 
-  // No board colour at all (user direction): the sea renders straight
-  // through the play area; only the chart grid marks it.
+  // Tier-1 strategy-map board: inside the mask the sea is shaded like an
+  // illustrated world map — flat posterized depth bands, faint bathymetry
+  // contours, paper grain — while the open ocean keeps realistic shading.
+  // The map is drawn in REST space, so it is "printed" on the board and
+  // does not slide with the swell; a whisper of wave lift survives so the
+  // ships still read as afloat.
+  float mapN = fbm(vRest * 0.5 + 7.3);
+  float bands = 4.0;
+  vec3 mapDeep = uDeepColor * 0.92;
+  vec3 mapLight = mix(uDeepColor, uCrestColor, 0.8);
+  vec3 mapCol = mix(mapDeep, mapLight, floor(mapN * bands) / (bands - 1.0));
+  float fb = fract(mapN * bands);
+  float contour = 1.0 - smoothstep(0.02, 0.09, min(fb, 1.0 - fb));
+  mapCol *= 1.0 - contour * 0.12;                    // bathymetry rings
+  mapCol += (vnoise(vRest * 34.0) - 0.5) * 0.035;    // paper grain
+  mapCol *= 0.96 + 0.08 * lift;                      // whisper of swell
+  mapCol *= 1.0 + uBoardLight * 0.25;                // night spotlight pool
+  water = mix(water, mapCol, board);
 
   // Cartographic, not neon (user direction): thin desaturated lines BLENDED
   // onto the water like a nautical chart overlay — no additive glow, no
@@ -95,18 +137,18 @@ void main() {
 
   // Stylized fresnel, clamped and damped over the board so squares stay legible.
   float fres = pow(1.0 - max(dot(n, view), 0.0), 3.0);
-  fres = min(fres, 0.55) * (1.0 - 0.25 * board);
+  fres = min(fres, 0.55) * (1.0 - board); // fully flat on the map
   water = mix(water, uSkyColor, fres);
 
   // Sun specular: tight glints + a broad sheen, damped over the board.
   vec3 halfDir = normalize(uSunDir + view);
   float ndh = max(dot(n, halfDir), 0.0);
   float spec = pow(ndh, 60.0) * 1.1 + pow(ndh, 8.0) * 0.08;
-  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - 0.55 * board);
+  water += vec3(1.0, 0.95, 0.82) * spec * (1.0 - board); // no glints on the map
 
-  // Simple lambert so swells read as form.
+  // Simple lambert so swells read as form; mostly flattened on the map.
   float diff = 0.75 + 0.25 * max(dot(n, uSunDir), 0.0);
-  water *= diff;
+  water *= mix(diff, 1.0, board * 0.75);
 
   // Horizon fog matching SceneManager's scene.fog so the far ocean edge
   // dissolves into the sky instead of silhouetting against it.
